@@ -57,11 +57,12 @@ int main(int argc, char** argv)
 		SDL_LockSurface(windowSurface);
 		for(uint32_t x = 0; x < WINDOW_W; x++)
 		{
-			uint8_t r = scanline[x] & 0xFF; 
-			uint8_t g = (scanline[x] >> 8 ) & 0xFF; 
-			uint8_t b = (scanline[x] >> 16) & 0xFF; 
+			uint8_t r = (scanline[x] >> 24) & 0xFF; 
+			uint8_t g = (scanline[x] >> 16) & 0xFF; 
+			uint8_t b = (scanline[x] >> 8 ) & 0xFF;
+			uint8_t a = scanline[x] & 0xFF; 
 
-			uint32_t writeColor = SDL_MapRGB(windowSurface->format, r, g, b);
+			uint32_t writeColor = SDL_MapRGBA(windowSurface->format, r, g, b, a);
 			((uint32_t*)windowSurface->pixels)[x + WINDOW_W * y] = writeColor; //TODO: be more robust about format handling
 		}
 		SDL_UnlockSurface(windowSurface);
@@ -83,7 +84,7 @@ int main(int argc, char** argv)
 	//---------------
 	unsigned int endTime = SDL_GetTicks();
 
-	std::cout << "RENDER TIME (s): " << (endTime - startTime) / 1000.0f << std::endl;
+	std::cout << "RENDER TIME: " << (endTime - startTime) / 1000.0f << "s" << std::endl;
 
 	while(running)
 	{
