@@ -41,7 +41,14 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	rurt::Renderer* renderer = new rurt::Renderer(WINDOW_W, WINDOW_H);
+	rurt::Camera camera = rurt::Camera(
+		vec3(0.0f), 
+		normalize(vec3(0.0f, 0.0f, -1.0f)), 
+		vec3(0.0f, 1.0f, 0.0f), 
+		60.0f, 
+		(float)WINDOW_W / (float)WINDOW_H
+	);
+	rurt::Renderer* renderer = new rurt::Renderer(camera, WINDOW_W, WINDOW_H);
 
 	//draw loop until rendering finished:
 	//---------------
@@ -52,7 +59,7 @@ int main(int argc, char** argv)
 	bool running = true;
 	for(int y = 0; y < WINDOW_H; y++)
 	{
-		renderer->draw_scanline(y, scanline);
+		renderer->draw_scanline(WINDOW_H - y - 1, scanline);
 
 		SDL_LockSurface(windowSurface);
 		for(uint32_t x = 0; x < WINDOW_W; x++)

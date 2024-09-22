@@ -8,6 +8,9 @@
 #define RURT_RENDERER_H
 
 #include <stdint.h>
+#include "camera.hpp"
+#include "quickmath.hpp"
+using namespace qm;
 
 //-------------------------------------------//
 
@@ -17,14 +20,18 @@ namespace rurt
 class Renderer
 {
 public:
-	Renderer(uint32_t imageW, uint32_t imageH);
+	Renderer(const Camera& cam, uint32_t imageW, uint32_t imageH);
 	~Renderer();
 
-	bool draw_scanline(uint32_t y, uint32_t* buf);
+	void draw_scanline(uint32_t y, uint32_t* buf);
 
 private:
-	uint32_t imageW;
-	uint32_t imageH;
+	Camera m_cam;
+	mat4 m_camInvView;
+	mat4 m_camInvProj;
+
+	uint32_t m_imageW;
+	uint32_t m_imageH;
 };
 
 }; //namespace rurt
