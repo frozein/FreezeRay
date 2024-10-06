@@ -39,6 +39,10 @@ int main(int argc, char** argv)
 	memset(windowSurface->pixels, 0, windowSurface->h * windowSurface->pitch);
 	SDL_UnlockSurface(windowSurface);
 
+	//create scene:
+	//---------------
+	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>();
+
 	//create renderer:
 	//---------------
 	rurt::Camera camera = rurt::Camera(
@@ -48,7 +52,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(camera, WINDOW_W, WINDOW_H);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H);
 
 	//draw loop until rendering finished:
 	//---------------

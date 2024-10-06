@@ -9,6 +9,8 @@
 
 #include <stdint.h>
 #include "camera.hpp"
+#include "scene.hpp"
+
 #include "quickmath.hpp"
 using namespace qm;
 
@@ -20,12 +22,14 @@ namespace rurt
 class Renderer
 {
 public:
-	Renderer(const Camera& cam, uint32_t imageW, uint32_t imageH);
+	Renderer(std::shared_ptr<Scene> scene, const Camera& cam, uint32_t imageW, uint32_t imageH);
 	~Renderer();
 
 	void draw_scanline(uint32_t y, uint32_t* buf);
 
 private:
+	std::shared_ptr<Scene> m_scene;
+
 	Camera m_cam;
 	mat4 m_camInvView;
 	mat4 m_camInvProj;

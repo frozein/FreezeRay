@@ -7,7 +7,8 @@
 namespace rurt
 {
 
-Renderer::Renderer(const Camera& cam, uint32_t imageW, uint32_t imageH) : 
+Renderer::Renderer(std::shared_ptr<Scene> scene, const Camera& cam, uint32_t imageW, uint32_t imageH) : 
+	m_scene(scene),
 	m_cam(cam), 
 	m_imageW(imageW), 
 	m_imageH(imageH)
@@ -40,10 +41,9 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 		//having a normalized ray dir is useful, so we ensure its always normalized
 		Ray ray = Ray(rayOrig.xyz(), normalize(rayDir.xyz()));
 
-		//calculate ray color (temp):
+		//cast ray against scene:
 		//---------------
-		float skyPos = ray.direction().y * 0.5f + 0.5f;
-		vec3 color = (1.0f - skyPos) * vec3(0.71f, 0.85f, 0.90f) + skyPos * vec3(0.00f, 0.45f, 0.74f);
+		vec3 color = m_scene->intersect(ray);
 
 		//write color to given buffer:
 		//---------------
