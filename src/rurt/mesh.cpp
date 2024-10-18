@@ -8,59 +8,128 @@
 namespace rurt
 {
 
-Mesh::Mesh(uint32_t numFaces, std::shared_ptr<uint32_t[]> faceIndices, std::shared_ptr<uint32_t[]> vertIndices, std::shared_ptr<vec3[]> verts) :
-	m_numFaces(numFaces),
-	m_faceIndices(faceIndices),
-	m_verts(verts)
+Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]> faceIndices, 
+           std::shared_ptr<uint32_t[]> vertIndices, std::shared_ptr<float[]> verts, std::string material) :
+	m_vertexAttribs(vertexAttribs),
+	m_verts(verts),
+	m_material(material)
 {
+	if((vertexAttribs & VERTEX_ATTRIB_POSITION) == 0)
+	{
+		//TODO: proper error logging/handling
+		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
+		return;
+	}
+
 	uint32_t numTris = 0;
-	for(uint32_t i = 0; i < m_numFaces; i++)
-		numTris += m_faceIndices[i] - 2;
+	for(uint32_t i = 0; i < numFaces; i++)
+		numTris += faceIndices[i] - 2;
 
 	m_numTris = numTris;
-	m_vertIndices = std::unique_ptr<uint32_t[]>(new uint32_t [numTris * 3]);
+	m_indices = std::shared_ptr<uint32_t[]>(new uint32_t [numTris * 3]);
 
 	uint32_t k = 0, l = 0;
-	for(uint32_t i = 0; i < m_numFaces; i++)
+	for(uint32_t i = 0; i < numFaces; i++)
 	{
-		for(uint32_t j = 0; j < m_faceIndices[i] - 2; j++)
+		for(uint32_t j = 0; j < faceIndices[i] - 2; j++)
 		{
-			m_vertIndices[l + 0] = vertIndices[k + 0];
-			m_vertIndices[l + 1] = vertIndices[k + j + 1];
-			m_vertIndices[l + 2] = vertIndices[k + j + 2];
+			m_indices[l + 0] = vertIndices[k + 0];
+			m_indices[l + 1] = vertIndices[k + j + 1];
+			m_indices[l + 2] = vertIndices[k + j + 2];
 
 			l += 3;
 		}
 
-		k += m_faceIndices[i];
+		k += faceIndices[i];
 	}
 }
 
-Mesh::~Mesh()
+Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::shared_ptr<uint32_t[]> indices, 
+           std::shared_ptr<float[]> verts, std::string material) :
+	m_vertexAttribs(vertexAttribs),
+	m_numTris(numTris),
+	m_indices(indices),
+	m_verts(verts),
+	m_material(material)
 {
-	//TODO
+	if((vertexAttribs & VERTEX_ATTRIB_POSITION) == 0)
+	{
+		//TODO: proper error logging/handling
+		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
+		return;
+	}
 }
 
-bool Mesh::intersect(const Ray& ray, float& minT, float& minU, float& minV)
+std::string Mesh::get_material()
 {
+	return m_material;
+}
+
+bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
+{
+	float* verts = m_verts.get();
+
+	uint32_t stride = 0;
+	uint32_t uvOffset = 0;
+	uint32_t normalOffset = 0;
+
+	if((m_vertexAttribs & VERTEX_ATTRIB_POSITION) != 0)
+	{
+		stride += 3;
+		uvOffset += 3;
+		normalOffset += 3;
+	}
+	if((m_vertexAttribs & VERTEX_ATTRIB_UV) != 0)
+	{
+		stride += 2;
+		normalOffset += 2;
+	}
+	if((m_vertexAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+		stride += 3;
+	
 	bool hit = false;
 	minT = INFINITY;
 	for(uint32_t i = 0; i < m_numTris; i++)
 	{
 		uint32_t triIdx = i * 3;
-		const vec3& v0 = m_verts[m_vertIndices[triIdx + 0]];
-		const vec3& v1 = m_verts[m_vertIndices[triIdx + 1]];
-		const vec3& v2 = m_verts[m_vertIndices[triIdx + 2]];
+		uint32_t idx0 = m_indices[triIdx + 0] * stride;
+		uint32_t idx1 = m_indices[triIdx + 1] * stride;
+		uint32_t idx2 = m_indices[triIdx + 2] * stride;
+	
+		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0]);
+		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1]);
+		const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2]);
 
 		float t;
 		float u, v;
 		if(intersect_triangle(ray, v0, v1, v2, t, u, v) && t < minT)
 		{
 			hit |= true;
-
 			minT = t;
-			minU = u;
-			minV = v;
+
+			float w = 1.0f - u - v;
+
+			if((m_vertexAttribs & VERTEX_ATTRIB_UV) != 0)
+			{
+				const vec2& uv0 = *reinterpret_cast<const vec2*>(&verts[idx0 + uvOffset]);
+				const vec2& uv1 = *reinterpret_cast<const vec2*>(&verts[idx1 + uvOffset]);
+				const vec2& uv2 = *reinterpret_cast<const vec2*>(&verts[idx2 + uvOffset]);
+
+				uv = uv0 * w + uv1 * u + uv2 * v;
+			}
+			else
+				uv = vec2(0.0f);
+
+			if((m_vertexAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+			{
+				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + normalOffset]);
+				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + normalOffset]);
+				const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[idx2 + normalOffset]);
+
+				normal = normal0 * w + normal1 * u + normal2 * v;
+			}
+			else
+				normal = cross(v1 - v0, v2 - v0);
 		}
 	}
 

@@ -72,7 +72,8 @@ std::shared_ptr<rurt::Mesh> generatePolyShphere(float rad, uint32_t divs)
 		vid = numV; 
 	} 
  
-	return std::make_shared<rurt::Mesh>(npolys, faceIndex, vertsIndex, verts); 
+	std::shared_ptr<float[]> vertsCasted = std::reinterpret_pointer_cast<float[]>(verts);
+	return std::make_shared<rurt::Mesh>(rurt::VERTEX_ATTRIB_POSITION, npolys, faceIndex, vertsIndex, vertsCasted); 
 }
 
 int main(int argc, char** argv)
@@ -109,7 +110,7 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(generatePolyShphere(1.0f, 10));
+	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(generatePolyShphere(1.0f, 20));
 
 	//create renderer:
 	//---------------

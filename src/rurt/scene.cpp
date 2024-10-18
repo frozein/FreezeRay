@@ -21,15 +21,12 @@ Scene::~Scene()
 vec3 Scene::intersect(const Ray& ray)
 {
 	float t;
-	float u, v;
-	bool hit = m_mesh->intersect(ray, t, u, v);
+	vec2 uv;
+	vec3 normal;
+	bool hit = m_mesh->intersect(ray, t, uv, normal);
 
 	if(hit)
-	{
-		float w = 1.0f - u - v;
-
-		return vec3(w, u, v);
-	}
+		return normalize(vec3(abs(normal.x), abs(normal.y), abs(normal.z)));
 	else
 		return sky_color(ray);
 }
