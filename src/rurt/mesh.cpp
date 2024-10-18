@@ -1,5 +1,8 @@
 #include "mesh.hpp"
 
+//#define QOBJ_IMPLEMENTATION
+//#include "quickobj.h"
+
 #define CULL_BACKFACE 1
 #define EPSILON 0.0001f
 
@@ -9,18 +12,18 @@ namespace rurt
 {
 
 Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]> faceIndices, 
-           std::shared_ptr<uint32_t[]> vertIndices, std::shared_ptr<float[]> verts, std::string material) :
-	m_vertexAttribs(vertexAttribs),
+           std::shared_ptr<uint32_t[]> vertIndices, std::shared_ptr<float[]> verts, std::string material,
+		   uint32_t vertStride, uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
 	m_verts(verts),
-	m_material(material)
+	m_material(material),
+	m_vertAttribs(vertexAttribs),
+	m_vertStride(vertStride),
+	m_vertPosOffset(vertPosOffset),
+	m_vertUvOffset(vertUvOffset),
+	m_vertNormalOffset(vertNormalOffset)
 {
-	if((vertexAttribs & VERTEX_ATTRIB_POSITION) == 0)
-	{
-		//TODO: proper error logging/handling
-		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
-		return;
-	}
-
+	//triangulate faces:
+	//---------------
 	uint32_t numTris = 0;
 	for(uint32_t i = 0; i < numFaces; i++)
 		numTris += faceIndices[i] - 2;
@@ -42,22 +45,26 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]
 
 		k += faceIndices[i];
 	}
+
+	//setup strides and offsets if not specified:
+	//---------------
+	setup_strides_offsets();
 }
 
 Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::shared_ptr<uint32_t[]> indices, 
-           std::shared_ptr<float[]> verts, std::string material) :
-	m_vertexAttribs(vertexAttribs),
+           std::shared_ptr<float[]> verts, std::string material, uint32_t vertStride,
+		   uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
 	m_numTris(numTris),
 	m_indices(indices),
 	m_verts(verts),
-	m_material(material)
+	m_material(material),
+	m_vertAttribs(vertexAttribs),
+	m_vertStride(vertStride),
+	m_vertPosOffset(vertPosOffset),
+	m_vertUvOffset(vertUvOffset),
+	m_vertNormalOffset(vertNormalOffset)
 {
-	if((vertexAttribs & VERTEX_ATTRIB_POSITION) == 0)
-	{
-		//TODO: proper error logging/handling
-		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
-		return;
-	}
+	setup_strides_offsets();
 }
 
 std::string Mesh::get_material()
@@ -67,34 +74,20 @@ std::string Mesh::get_material()
 
 bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 {
+	if(!m_valid)
+		return false;
+
 	float* verts = m_verts.get();
-
-	uint32_t stride = 0;
-	uint32_t uvOffset = 0;
-	uint32_t normalOffset = 0;
-
-	if((m_vertexAttribs & VERTEX_ATTRIB_POSITION) != 0)
-	{
-		stride += 3;
-		uvOffset += 3;
-		normalOffset += 3;
-	}
-	if((m_vertexAttribs & VERTEX_ATTRIB_UV) != 0)
-	{
-		stride += 2;
-		normalOffset += 2;
-	}
-	if((m_vertexAttribs & VERTEX_ATTRIB_NORMAL) != 0)
-		stride += 3;
 	
 	bool hit = false;
 	minT = INFINITY;
+
 	for(uint32_t i = 0; i < m_numTris; i++)
 	{
 		uint32_t triIdx = i * 3;
-		uint32_t idx0 = m_indices[triIdx + 0] * stride;
-		uint32_t idx1 = m_indices[triIdx + 1] * stride;
-		uint32_t idx2 = m_indices[triIdx + 2] * stride;
+		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
+		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
+		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
 	
 		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0]);
 		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1]);
@@ -109,22 +102,22 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 
 			float w = 1.0f - u - v;
 
-			if((m_vertexAttribs & VERTEX_ATTRIB_UV) != 0)
+			if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
 			{
-				const vec2& uv0 = *reinterpret_cast<const vec2*>(&verts[idx0 + uvOffset]);
-				const vec2& uv1 = *reinterpret_cast<const vec2*>(&verts[idx1 + uvOffset]);
-				const vec2& uv2 = *reinterpret_cast<const vec2*>(&verts[idx2 + uvOffset]);
+				const vec2& uv0 = *reinterpret_cast<const vec2*>(&verts[idx0 + m_vertUvOffset]);
+				const vec2& uv1 = *reinterpret_cast<const vec2*>(&verts[idx1 + m_vertUvOffset]);
+				const vec2& uv2 = *reinterpret_cast<const vec2*>(&verts[idx2 + m_vertUvOffset]);
 
 				uv = uv0 * w + uv1 * u + uv2 * v;
 			}
 			else
 				uv = vec2(0.0f);
 
-			if((m_vertexAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+			if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
 			{
-				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + normalOffset]);
-				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + normalOffset]);
-				const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[idx2 + normalOffset]);
+				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertNormalOffset]);
+				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertNormalOffset]);
+				const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertNormalOffset]);
 
 				normal = normal0 * w + normal1 * u + normal2 * v;
 			}
@@ -134,6 +127,31 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 	}
 
 	return hit;
+}
+
+std::vector<Mesh> Mesh::from_obj(std::string path)
+{
+	/*size_t numMeshes;
+	QOBJmesh* meshes;
+
+	size_t numMaterials;
+	QOBJmaterial* materials;
+
+	QOBJerror err = qobj_load(path.c_str(), &numMeshes, &meshes, &numMaterials, &materials);
+	if(err != QOBJ_SUCCESS)
+	{
+		std::cout << "ERROR: failed to load qobj failed to load obj file \"" << path << "\" with error " << err << std::endl;
+		return {};
+	}
+
+	for(uint32_t i = 0; i < numMeshes; i++)
+	{
+
+	}
+
+	qobj_free(numMaterials, meshes, numMaterials, materials);*/
+
+	return {};
 }
 
 //-------------------------------------------//
@@ -173,6 +191,60 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 
 	t = dot(v0v2, qvec) * invDet;
 	return true;
+}
+
+void Mesh::setup_strides_offsets()
+{
+	//vertices must have a position, or the mesh isnt renderable:
+	//---------------
+	if((m_vertAttribs & VERTEX_ATTRIB_POSITION) == 0)
+	{
+		//TODO: proper error logging/handling
+		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
+		m_valid = false;
+		return;
+	}
+
+	//calculate stride:
+	//---------------
+	if(m_vertStride == UINT32_MAX)
+	{
+		m_vertStride = 0;
+
+		if((m_vertAttribs & VERTEX_ATTRIB_POSITION) != 0)
+			m_vertStride += 3;
+		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
+			m_vertStride += 2;
+		if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+			m_vertStride += 3;
+	}
+
+	//calculate position offset (assume it comes first):
+	//---------------
+	if(m_vertPosOffset == UINT32_MAX)
+		m_vertPosOffset = 0;
+
+	//calculate uv offset (assume it comes directly after position):
+	//---------------
+	if(m_vertUvOffset == UINT32_MAX)
+	{
+		m_vertUvOffset = 0;
+
+		if((m_vertAttribs & VERTEX_ATTRIB_POSITION) != 0)
+			m_vertUvOffset += 3;
+	}
+
+	//calculate normal offset (assume it comes after position and uv):
+	//---------------
+	if(m_vertNormalOffset == UINT32_MAX)
+	{
+		m_vertNormalOffset = 0;
+
+		if((m_vertAttribs & VERTEX_ATTRIB_POSITION) != 0)
+			m_vertUvOffset += 3;
+		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
+			m_vertUvOffset += 2;
+	}
 }
 
 }; //namespace rurt
