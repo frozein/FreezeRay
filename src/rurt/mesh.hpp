@@ -42,7 +42,7 @@ public:
 
 	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal);
 
-	static std::vector<Mesh> from_obj(std::string path);
+	static std::vector<std::shared_ptr<Mesh>> from_obj(std::string path);
 
 private:
 	bool m_valid = true; //whether or not this mesh is valid, can become invalid if given nonsense params

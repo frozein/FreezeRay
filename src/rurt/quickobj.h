@@ -555,6 +555,8 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 	*numMeshes = 0;
 	size_t curMesh = 0;
 
+	uint8_t addedDefault = 0;
+
 	//ensure memory was properly allocated:
 	if(!positions || !normals || !texCoords || !*meshes || !meshVertexMaps)
 	{
@@ -796,7 +798,6 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 	}
 
 	//add default material to list if needed:
-	uint8_t addedDefault = 0;
 	for(uint32_t i = 0; i < *numMeshes; i++)
 		if((*meshes)[i].materialIdx == UINT32_MAX)
 		{
@@ -815,6 +816,7 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 			}
 
 			(*materials)[*numMaterials - 1] = qobj_default_material();
+			addedDefault = 1;
 		}
 
 	cleanup: ;

@@ -1,7 +1,7 @@
 #include "mesh.hpp"
 
-//#define QOBJ_IMPLEMENTATION
-//#include "quickobj.h"
+#define QOBJ_IMPLEMENTATION
+#include "quickobj.h"
 
 #define CULL_BACKFACE 1
 #define EPSILON 0.0001f
@@ -113,7 +113,7 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 			else
 				uv = vec2(0.0f);
 
-			if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+			/*if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
 			{
 				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertNormalOffset]);
 				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertNormalOffset]);
@@ -121,17 +121,19 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 
 				normal = normal0 * w + normal1 * u + normal2 * v;
 			}
-			else
-				normal = cross(v1 - v0, v2 - v0);
+			else*/
+				normal = cross(v1 - v0, v2 - v0); //calculate flat-shaded normal
 		}
 	}
 
 	return hit;
 }
 
-std::vector<Mesh> Mesh::from_obj(std::string path)
+std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 {
-	/*size_t numMeshes;
+	std::vector<std::shared_ptr<Mesh>> result = {};
+
+	size_t numMeshes;
 	QOBJmesh* meshes;
 
 	size_t numMaterials;
@@ -146,12 +148,19 @@ std::vector<Mesh> Mesh::from_obj(std::string path)
 
 	for(uint32_t i = 0; i < numMeshes; i++)
 	{
+		std::shared_ptr<uint32_t[]> indices = std::shared_ptr<uint32_t[]>(new uint32_t[meshes[i].numIndices]);
+		std::shared_ptr<float[]> verts = std::shared_ptr<float[]>(new float[meshes[i].numVertices * sizeof(QOBJvertex) / sizeof(float)]);
 
+		memcpy(indices.get(), meshes[i].indices, meshes[i].numIndices * sizeof(uint32_t));
+		memcpy(verts.get(), meshes[i].vertices, meshes[i].numVertices * sizeof(QOBJvertex));
+
+		result.push_back(std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION | VERTEX_ATTRIB_UV | VERTEX_ATTRIB_NORMAL, meshes[i].numIndices / 3,
+		                      indices, verts, "", sizeof(QOBJvertex) / sizeof(float), 0, 6 * sizeof(float), 3 * sizeof(float)));
 	}
 
-	qobj_free(numMaterials, meshes, numMaterials, materials);*/
+	qobj_free(numMaterials, meshes, numMaterials, materials);
 
-	return {};
+	return result;
 }
 
 //-------------------------------------------//

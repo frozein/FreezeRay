@@ -110,7 +110,9 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(generatePolyShphere(1.0f, 20));
+	std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
+
+	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(meshes[0]);
 
 	//create renderer:
 	//---------------
