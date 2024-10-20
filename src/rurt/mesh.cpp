@@ -113,7 +113,7 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 			else
 				uv = vec2(0.0f);
 
-			/*if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+			if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
 			{
 				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertNormalOffset]);
 				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertNormalOffset]);
@@ -121,7 +121,7 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 
 				normal = normal0 * w + normal1 * u + normal2 * v;
 			}
-			else*/
+			else
 				normal = cross(v1 - v0, v2 - v0); //calculate flat-shaded normal
 		}
 	}
@@ -149,13 +149,21 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 	for(uint32_t i = 0; i < numMeshes; i++)
 	{
 		std::shared_ptr<uint32_t[]> indices = std::shared_ptr<uint32_t[]>(new uint32_t[meshes[i].numIndices]);
-		std::shared_ptr<float[]> verts = std::shared_ptr<float[]>(new float[meshes[i].numVertices * sizeof(QOBJvertex) / sizeof(float)]);
+		std::shared_ptr<float[]> verts = std::shared_ptr<float[]>(new float[meshes[i].numVertices * meshes[i].vertexStride]);
 
 		memcpy(indices.get(), meshes[i].indices, meshes[i].numIndices * sizeof(uint32_t));
-		memcpy(verts.get(), meshes[i].vertices, meshes[i].numVertices * sizeof(QOBJvertex));
+		memcpy(verts.get(), meshes[i].vertices, meshes[i].numVertices * sizeof(float) * meshes[i].vertexStride);
 
-		result.push_back(std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION | VERTEX_ATTRIB_UV | VERTEX_ATTRIB_NORMAL, meshes[i].numIndices / 3,
-		                      indices, verts, "", sizeof(QOBJvertex) / sizeof(float), 0, 6 * sizeof(float), 3 * sizeof(float)));
+		uint32_t attribs = 0;
+		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_POSITION)
+			attribs |= VERTEX_ATTRIB_POSITION;
+		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_TEX_COORDS)
+			attribs |= VERTEX_ATTRIB_UV;
+		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL)
+			attribs |= VERTEX_ATTRIB_NORMAL;
+
+		result.push_back(std::make_shared<Mesh>(attribs, (uint32_t)meshes[i].numIndices / 3, indices, verts, "", 
+		                 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
 	qobj_free(numMaterials, meshes, numMaterials, materials);
