@@ -124,6 +124,14 @@ typedef enum QOBJvertexAttributes
 	QOBJ_VERTEX_ATTRIB_TEX_COORDS = (1 << 2)
 } QOBJvertexAttributes;
 
+typedef enum QOBJvertexSpecification
+{
+	QOBJ_VERTEX_SPEC_POSITION                  = QOBJ_VERTEX_ATTRIB_POSITION,
+	QOBJ_VERTEX_SPEC_POSITION_TEX_COORD        = QOBJ_VERTEX_ATTRIB_POSITION | QOBJ_VERTEX_ATTRIB_TEX_COORDS,
+	QOBJ_VERTEX_SPEC_POSITION_NORMAL           = QOBJ_VERTEX_ATTRIB_POSITION | QOBJ_VERTEX_ATTRIB_NORMAL,
+	QOBJ_VERTEX_SPEC_POSITION_TEX_COORD_NORMAL = QOBJ_VERTEX_ATTRIB_POSITION | QOBJ_VERTEX_ATTRIB_TEX_COORDS | QOBJ_VERTEX_ATTRIB_NORMAL,
+} QOBJvertexSpecification;
+
 QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size_t* numMaterials, QOBJmaterial** materials);
 void qobj_free(size_t numMeshes, QOBJmesh* meshes, size_t numMaterials, QOBJmaterial* materials);
 
@@ -371,6 +379,112 @@ inline void qobj_fgets(FILE* fptr, char* token, char* endCh)
 	}
 	else
 		*endCh = EOF;
+}
+
+inline int32_t qobj_read_vertex_ref(FILE* fptr, QOBJvertexSpecification spec, QOBJvertexRef* vert)
+{
+	int32_t numRead;
+
+	switch(spec)
+	{
+	case QOBJ_VERTEX_SPEC_POSITION:
+	{
+		numRead = fscanf(fptr, "%d", &vert->pos);
+		vert->texCoord = 0;
+		vert->normal = 0;
+		break;
+	}
+	case QOBJ_VERTEX_SPEC_POSITION_TEX_COORD:
+	{
+		numRead = fscanf(fptr, "%d/%d", &vert->pos, &vert->texCoord);
+		vert->normal = 0;
+		break;
+	}
+	case QOBJ_VERTEX_SPEC_POSITION_NORMAL:
+	{
+		numRead = fscanf(fptr, "%d//%d", &vert->pos, &vert->normal);
+		vert->texCoord = 0;
+		break;
+	}
+	case QOBJ_VERTEX_SPEC_POSITION_TEX_COORD_NORMAL:
+	{
+		numRead = fscanf(fptr, "%d/%d/%d", &vert->pos, &vert->texCoord, &vert->normal);
+		break;
+	}
+	}
+
+	return numRead;
+}
+
+inline void qobj_add_vertex(QOBJmesh* mesh, QOBJvertexHashmap* map, QOBJvertexRef vert,
+                            float* positions, float* texCoords, float* normals)
+{
+	uint32_t indexToAdd = (uint32_t)mesh->numVertices;
+	qobj_hashmap_get_or_add(map, vert, &indexToAdd);
+
+	mesh->indices[mesh->numIndices++] = indexToAdd;
+	if(indexToAdd < (uint32_t)mesh->numVertices) //skip if vertex already exists in mesh
+		return;
+
+	uint32_t insertIdx = (uint32_t)mesh->numVertices++ * mesh->vertexStride;
+
+	if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_POSITION && vert.pos > 0)
+	{
+		uint32_t posIdx = (vert.pos - 1) * QOBJ_ATTRIB_SIZE_POSITION; //.obj files are 1-indexed
+
+		mesh->vertices[insertIdx + mesh->vertexPosOffset + 0] = positions[posIdx + 0];
+		mesh->vertices[insertIdx + mesh->vertexPosOffset + 1] = positions[posIdx + 1];
+		mesh->vertices[insertIdx + mesh->vertexPosOffset + 2] = positions[posIdx + 2];
+	}
+
+	if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL && vert.normal > 0)
+	{
+		uint32_t normalIdx = (vert.normal - 1) * QOBJ_ATTRIB_SIZE_NORMAL; //.obj files are 1-indexed
+
+		mesh->vertices[insertIdx + mesh->vertexNormalOffset + 0] = normals[normalIdx + 0];
+		mesh->vertices[insertIdx + mesh->vertexNormalOffset + 1] = normals[normalIdx + 1];
+		mesh->vertices[insertIdx + mesh->vertexNormalOffset + 2] = normals[normalIdx + 2];
+	}
+
+	if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_TEX_COORDS && vert.texCoord > 0)
+	{
+		uint32_t texCoordIdx = (vert.texCoord - 1) * QOBJ_ATTRIB_SIZE_TEX_COORDS; //.obj files are 1-indexed
+
+		mesh->vertices[insertIdx + mesh->vertexTexCoordOffset + 0] = texCoords[texCoordIdx + 0];
+		mesh->vertices[insertIdx + mesh->vertexTexCoordOffset + 1] = texCoords[texCoordIdx + 1];
+	}
+}
+
+inline QOBJerror qobj_add_triangle(QOBJmesh* mesh, QOBJvertexHashmap* map, QOBJvertexRef v0, QOBJvertexRef v1, QOBJvertexRef v2,
+                                   float* positions, float* texCoords, float* normals)
+{
+	//resize indices if needed:
+	if(mesh->numIndices + 3 >= mesh->indexCap)
+	{
+		mesh->indexCap *= 2;
+		mesh->indices = (uint32_t*)realloc(mesh->indices, mesh->indexCap * sizeof(uint32_t));
+		if(!mesh->indices)
+			return QOBJ_ERROR_OUT_OF_MEM;
+	}
+
+	//resize vertices if needed:
+	if(mesh->numVertices + 3 >= mesh->vertexCap)
+	{
+		//potentially wasteful since we dont necessarily add each vertex (can be reused)
+
+		mesh->vertexCap *= 2;
+		mesh->vertices = (float*)realloc(mesh->vertices, mesh->vertexCap * sizeof(float) * mesh->vertexStride);
+		if(!mesh->vertices)
+			return QOBJ_ERROR_OUT_OF_MEM;
+	}
+
+	//add vertices + indices:
+	qobj_add_vertex(mesh, map, v0, positions, texCoords, normals);
+	qobj_add_vertex(mesh, map, v1, positions, texCoords, normals);
+	qobj_add_vertex(mesh, map, v2, positions, texCoords, normals);
+
+	//return:
+	return QOBJ_SUCCESS;
 }
 
 //----------------------------------------------------------------------//
@@ -689,6 +803,58 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 		}
 		else if(strcmp(curToken, "f") == 0)
 		{
+			//read first vertex + determine format:
+			QOBJvertexRef firstVertex;
+
+			QOBJvertexSpecification spec;
+			uint32_t numRead = fscanf(fptr, "%d/%d/%d", &firstVertex.pos, &firstVertex.texCoord, &firstVertex.normal);
+			
+			switch(numRead)
+			{
+			case 1:
+			{
+				char nextCh = fgetc(fptr);
+				if(nextCh == '/')
+				{
+					fscanf(fptr, "%d", &firstVertex.normal);
+
+					spec = QOBJ_VERTEX_SPEC_POSITION_NORMAL;	
+					firstVertex.texCoord = 0;
+				}
+				else
+				{
+					spec = QOBJ_VERTEX_SPEC_POSITION;
+					firstVertex.texCoord = 0;
+					firstVertex.normal = 0;
+				}
+
+				break;
+			}
+			case 2:
+			{
+				spec = QOBJ_VERTEX_SPEC_POSITION_TEX_COORD;
+				firstVertex.normal = 0;
+				break;
+			}
+			case 3:
+			{
+				spec = QOBJ_VERTEX_SPEC_POSITION_TEX_COORD_NORMAL;
+				break;
+			}
+			case 0:
+			default: //nothing read, "f" exists with no params
+			{
+				spec = (QOBJvertexSpecification)0;
+				break;
+			}
+			}
+
+			if(spec == 0)
+			{
+				errorCode = QOBJ_ERROR_INVALID_FILE;
+				break;
+			}
+
 			//if no mesh is active yet, try to find an existing mesh with the same material:
 			if(curMesh == UINT32_MAX)
 				for(uint32_t i = 0; i < *numMeshes; i++)
@@ -706,18 +872,6 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 				//set curMesh:
 				curMesh = (uint32_t)*numMeshes;
 
-				//determine vertex attributes to include:
-
-				//TODO: base this off of the first face instead!
-
-				uint32_t vertexAttribs = 0;
-				if(positionSize > 0)
-					vertexAttribs |= QOBJ_VERTEX_ATTRIB_POSITION;
-				if(normalSize > 0)
-					vertexAttribs |= QOBJ_VERTEX_ATTRIB_NORMAL;
-				if(texCoordSize > 0)
-					vertexAttribs |= QOBJ_VERTEX_ATTRIB_TEX_COORDS;
-
 				//allocate mem and create new mesh:
 				(*numMeshes)++;
 				*meshes = (QOBJmesh*)realloc(*meshes, *numMeshes * sizeof(QOBJmesh));
@@ -729,7 +883,8 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 					break;
 				}
 
-				QOBJerror meshCreateError = qobj_mesh_create(&(*meshes)[curMesh], vertexAttribs, curMaterial);
+				//every spec is a valid set of attribs, see definition
+				QOBJerror meshCreateError = qobj_mesh_create(&(*meshes)[curMesh], spec, curMaterial);
 				if(meshCreateError != QOBJ_SUCCESS)
 				{
 					errorCode = meshCreateError;
@@ -744,133 +899,34 @@ QOBJerror qobj_load(const char* path, size_t* numMeshes, QOBJmesh** meshes, size
 				}
 			}
 
-			//read face data:
-			uint32_t numVertices = 0; //TODO: support n-gons, not just quads
-			QOBJvertexRef vertices[6];
+			//read next 2 vertices:
+			QOBJvertexRef v1, v2;
 
-			while(numVertices < 4)
+			if(qobj_read_vertex_ref(fptr, spec, &v1) == 0 || qobj_read_vertex_ref(fptr, spec, &v2) == 0)
 			{
-				uint32_t vert = numVertices++;
-
-				//read position:
-				if(fscanf(fptr, "%d", &vertices[vert].pos) < 1)
-				{
-					numVertices--;
-					break;
-				}
-
-				char nextCh = fgetc(fptr);
-				if(nextCh != '/')
-				{
-					vertices[vert].normal = 0;
-					vertices[vert].texCoord = 0;
-					continue;
-				}
-
-				//read normal (if no texture coordinates exist):
-				nextCh = fgetc(fptr);
-				if(nextCh == '/')
-				{
-					fscanf(fptr, "%d", &vertices[vert].normal);
-					
-					vertices[vert].texCoord = 0;
-					continue;
-				}
-				else
-					ungetc(nextCh, fptr);
-				
-				//read texture coordinates:
-				fscanf(fptr, "%d", &vertices[vert].texCoord);
-					
-				//read normal (if texture coordinates exist):
-				nextCh = fgetc(fptr);
-				if(nextCh == '/')
-					fscanf(fptr, "%d", &vertices[vert].normal);
-				else
-				{
-					ungetc(nextCh, fptr);
-
-					vertices[vert].normal = 0;
-				}
+				errorCode = QOBJ_ERROR_INVALID_FILE;
+				break;
 			}
 
-			//split quad into 2 triangles:
-			if(numVertices == 4)
-			{
-				QOBJvertexRef temp = vertices[3];
-				vertices[3] = vertices[0];
-				vertices[4] = vertices[2];
-				vertices[5] = temp;
-
-				numVertices = 6;
-			}
-
+			//add vertices to mesh and continue reading, triangulating face:
 			QOBJmesh* mesh = &(*meshes)[curMesh];
 			QOBJvertexHashmap* map = &meshVertexMaps[curMesh]; 
 
-			//resize if needed:
-			if(mesh->numIndices + numVertices >= mesh->indexCap)
+			while(1)
 			{
-				mesh->indexCap *= 2;
-				mesh->indices = (uint32_t*)realloc(mesh->indices, mesh->indexCap * sizeof(uint32_t));
-				if(!mesh->indices)
-				{
-					errorCode = QOBJ_ERROR_OUT_OF_MEM;
+				errorCode = qobj_add_triangle(mesh, map, firstVertex, v1, v2, positions, texCoords, normals);
+				if(errorCode != QOBJ_SUCCESS)
 					break;
-				}
-			}
+			
+				v1 = v2;
 
-			if(mesh->numVertices + numVertices >= mesh->vertexCap)
-			{
-				//potentially wasteful since we dont necessarily add each vertex (can be reused)
-
-				mesh->vertexCap *= 2;
-				mesh->vertices = (float*)realloc(mesh->vertices, mesh->vertexCap * sizeof(float) * mesh->vertexStride);
-				if(!mesh->vertices)
-				{
-					errorCode = QOBJ_ERROR_OUT_OF_MEM;
+				int32_t readResult = qobj_read_vertex_ref(fptr, spec, &v2);
+				if(readResult == 0 || readResult == EOF)
 					break;
-				}
 			}
 
-			//add vertices + indices:
-			for(uint32_t i = 0; i < numVertices; i++)
-			{
-				uint32_t indexToAdd = (uint32_t)mesh->numVertices;
-				qobj_hashmap_get_or_add(map, vertices[i], &indexToAdd); //TODO: FIX!!!!
-
-				mesh->indices[mesh->numIndices++] = indexToAdd;
-				if(indexToAdd < (uint32_t)mesh->numVertices) //skip if vertex already exists in mesh
-					continue;
-
-				uint32_t insertIdx = (uint32_t)mesh->numVertices++ * mesh->vertexStride;
-
-				if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_POSITION)
-				{
-					uint32_t posIdx = (vertices[i].pos - 1) * QOBJ_ATTRIB_SIZE_POSITION; //.obj files are 1-indexed
-
-					mesh->vertices[insertIdx + mesh->vertexPosOffset + 0] = positions[posIdx + 0];
-					mesh->vertices[insertIdx + mesh->vertexPosOffset + 1] = positions[posIdx + 1];
-					mesh->vertices[insertIdx + mesh->vertexPosOffset + 2] = positions[posIdx + 2];
-				}
-
-				if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL)
-				{
-					uint32_t normalIdx = (vertices[i].normal - 1) * QOBJ_ATTRIB_SIZE_NORMAL; //.obj files are 1-indexed
-
-					mesh->vertices[insertIdx + mesh->vertexNormalOffset + 0] = normals[normalIdx + 0];
-					mesh->vertices[insertIdx + mesh->vertexNormalOffset + 1] = normals[normalIdx + 1];
-					mesh->vertices[insertIdx + mesh->vertexNormalOffset + 2] = normals[normalIdx + 2];
-				}
-
-				if(mesh->vertexAttribs & QOBJ_VERTEX_ATTRIB_TEX_COORDS)
-				{
-					uint32_t texCoordIdx = (vertices[i].texCoord - 1) * QOBJ_VERTEX_ATTRIB_TEX_COORDS; //.obj files are 1-indexed
-
-					mesh->vertices[insertIdx + mesh->vertexTexCoordOffset + 0] = texCoords[texCoordIdx + 0];
-					mesh->vertices[insertIdx + mesh->vertexTexCoordOffset + 1] = texCoords[texCoordIdx + 1];
-				}
-			}
+			if(errorCode != QOBJ_SUCCESS)
+				break;
 		}
 		else if(strcmp(curToken, "usemtl") == 0)
 		{
