@@ -133,13 +133,10 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 {
 	std::vector<std::shared_ptr<Mesh>> result = {};
 
-	size_t numMeshes;
+	uint32_t numMeshes;
 	QOBJmesh* meshes;
 
-	size_t numMaterials;
-	QOBJmaterial* materials;
-
-	QOBJerror err = qobj_load(path.c_str(), &numMeshes, &meshes, &numMaterials, &materials);
+	QOBJerror err = qobj_load_obj(path.c_str(), &numMeshes, &meshes);
 	if(err != QOBJ_SUCCESS)
 	{
 		std::cout << "ERROR: failed to load qobj failed to load obj file \"" << path << "\" with error " << err << std::endl;
@@ -162,11 +159,11 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL)
 			attribs |= VERTEX_ATTRIB_NORMAL;
 
-		result.push_back(std::make_shared<Mesh>(attribs, (uint32_t)meshes[i].numIndices / 3, indices, verts, "", 
+		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, indices, verts, "", 
 		                 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
-	qobj_free(numMaterials, meshes, numMaterials, materials);
+	qobj_free_obj(numMeshes, meshes);
 
 	return result;
 }
