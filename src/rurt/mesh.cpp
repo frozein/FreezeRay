@@ -133,6 +133,8 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 {
 	std::vector<std::shared_ptr<Mesh>> result = {};
 
+	//load meshes with qobj:
+	//---------------
 	uint32_t numMeshes;
 	QOBJmesh* meshes;
 
@@ -143,10 +145,15 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 		return {};
 	}
 
+	//convert to Mesh object:
+	//---------------
 	for(uint32_t i = 0; i < numMeshes; i++)
 	{
 		std::shared_ptr<uint32_t[]> indices = std::shared_ptr<uint32_t[]>(new uint32_t[meshes[i].numIndices]);
 		std::shared_ptr<float[]> verts = std::shared_ptr<float[]>(new float[meshes[i].numVertices * meshes[i].vertexStride]);
+
+		//unfortuntaely we need to copy the data returned by qobj since we need shared_ptrs - TODO: fix this!!
+		//(we cant use a custom deleter since we have 2 separate shared_ptrs)
 
 		memcpy(indices.get(), meshes[i].indices, meshes[i].numIndices * sizeof(uint32_t));
 		memcpy(verts.get(), meshes[i].vertices, meshes[i].numVertices * sizeof(float) * meshes[i].vertexStride);
@@ -163,6 +170,8 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 		                 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
+	//cleanup:
+	//---------------
 	qobj_free_obj(numMeshes, meshes);
 
 	return result;
