@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include <memory>
 #include <vector>
+#include <unordered_map>
 #include "ray.hpp"
 
 #include "quickmath.hpp"
@@ -43,6 +44,9 @@ public:
 	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal);
 
 	static std::vector<std::shared_ptr<Mesh>> from_obj(std::string path);
+	static std::shared_ptr<Mesh> unit_sphere(uint32_t numSubdivisions = 2, bool smoothNormals = true);
+	static std::shared_ptr<Mesh> unit_cube();
+	static std::shared_ptr<Mesh> unit_square();
 
 private:
 	bool m_valid = true; //whether or not this mesh is valid, can become invalid if given nonsense params
@@ -62,6 +66,26 @@ private:
 	bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
 
 	void setup_strides_offsets();
+
+	//helpers for icosphere generation:
+
+	struct HashPair 
+	{
+		template <class T1, class T2>
+		size_t operator()(const std::pair<T1, T2>& p) const
+		{
+			auto hash1 = std::hash<T1>{}(p.first);
+			auto hash2 = std::hash<T2>{}(p.second);
+
+			if (hash1 != hash2)
+				return hash1 ^ hash2;
+
+			// If hash1 == hash2, their XOR is zero
+			return hash1;
+		}
+	};
+	static std::vector<uint32_t> icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
+	                                                 std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap);
 };
 
 }; //namespace rurt

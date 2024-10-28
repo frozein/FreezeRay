@@ -110,15 +110,16 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
+	//std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
 
-	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(meshes[0]);
+	std::shared_ptr<rurt::Mesh> mesh = rurt::Mesh::unit_sphere(3, true);
+	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(mesh);
 
 	//create renderer:
 	//---------------
 	rurt::Camera camera = rurt::Camera(
-		vec3(0.0f, 0.0f, 3.0f), 
-		normalize(vec3(0.0f, 0.0f, -1.0f)), 
+		vec3(3.0f, 3.0f, 3.0f), 
+		normalize(vec3(-1.0f, -1.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
