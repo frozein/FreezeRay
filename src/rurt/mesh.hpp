@@ -13,9 +13,6 @@
 #include <unordered_map>
 #include "ray.hpp"
 
-#include "quickmath.hpp"
-using namespace qm;
-
 //-------------------------------------------//
 
 namespace rurt
@@ -40,6 +37,7 @@ public:
 		 uint32_t vertUvOffset = UINT32_MAX, uint32_t vertNormalOffset = UINT32_MAX);
 
 	std::string get_material();
+	void set_material(std::string material);
 
 	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal);
 

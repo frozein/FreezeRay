@@ -72,6 +72,11 @@ std::string Mesh::get_material()
 	return m_material;
 }
 
+void Mesh::set_material(std::string material)
+{
+	m_material = material;
+}
+
 bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 {
 	if(!m_valid)

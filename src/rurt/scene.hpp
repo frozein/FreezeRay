@@ -8,7 +8,7 @@
 #define RURT_SCENE_H
 
 #include "ray.hpp"
-#include "mesh.hpp"
+#include "object.hpp"
 
 #include "quickmath.hpp"
 using namespace qm;
@@ -21,15 +21,21 @@ namespace rurt
 class Scene
 {
 public:
-	Scene(std::shared_ptr<Mesh> mesh);
-	~Scene();
+	Scene(std::vector<std::pair<std::shared_ptr<Object>, mat4>> objects);
 
 	vec3 intersect(const Ray& ray);
 
 private:
 	vec3 sky_color(const Ray& ray);
 
-	std::shared_ptr<Mesh> m_mesh; //TEMP: just contains a single mesh for testing for now
+	struct ObjectRef
+	{
+		std::shared_ptr<Object> object;
+		mat4 transform;
+		mat4 invTransform;
+		mat4 invTransformNoTranslate;
+	};
+	std::vector<ObjectRef> m_objects;
 };
 
 }; //namespace rurt
