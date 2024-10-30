@@ -10,6 +10,7 @@
 
 #include <string>
 #include <memory>
+#include "brdf.hpp"
 
 //-------------------------------------------//
 
@@ -19,16 +20,15 @@ namespace rurt
 class Material
 {
 public:
-	Material(const std::string& name);
+	Material(const std::string& name) : m_name(name) {};
 
-	const std::string& get_name() const;
-	void set_name(const std::string& name);
+	const std::string& get_name() const { return m_name; };
+	void set_name(const std::string& name) { m_name = name; };
 
-	static std::shared_ptr<Material> default_diffuse();
+	virtual std::shared_ptr<BRDF> get_brdf() const = 0;
+	virtual vec3 get_emission() const = 0;
 
 private:
-	static std::shared_ptr<Material> m_defaultDiffuse;
-
 	std::string m_name;
 };
 

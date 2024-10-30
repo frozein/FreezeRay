@@ -20,7 +20,10 @@ Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std
 
 		//set to default material if not found
 		if(mat == nullptr)
-			mat = Material::default_diffuse();
+		{
+			std::cout << "ERROR: no material found" << std::endl;
+			//TODO!!!!
+		}
 
 		m_meshes.push_back({meshes[i], mat});
 	}

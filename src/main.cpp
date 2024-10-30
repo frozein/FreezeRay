@@ -41,8 +41,6 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	//std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
-
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_cube();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 

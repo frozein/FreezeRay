@@ -312,9 +312,6 @@ void Mesh::setup_strides_offsets()
 
 std::shared_ptr<const Mesh> Mesh::gen_unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
 {
-	std::cout << "here" << std::endl;
-
-
 	//create initial vertices and indices:
 	//---------------
 	const float x = 0.525731112119133606f;
