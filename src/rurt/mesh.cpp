@@ -11,10 +11,10 @@
 namespace rurt
 {
 
-Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]> faceIndices, 
-           std::shared_ptr<uint32_t[]> vertIndices, std::shared_ptr<float[]> verts, std::string material,
+Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::unique_ptr<uint32_t[]> faceIndices, 
+           std::unique_ptr<uint32_t[]> vertIndices, std::unique_ptr<float[]> verts, std::string material,
 		   uint32_t vertStride, uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
-	m_verts(verts),
+	m_verts(std::move(verts)),
 	m_material(material),
 	m_vertAttribs(vertexAttribs),
 	m_vertStride(vertStride),
@@ -29,7 +29,7 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]
 		numTris += faceIndices[i] - 2;
 
 	m_numTris = numTris;
-	m_indices = std::shared_ptr<uint32_t[]>(new uint32_t [numTris * 3]);
+	m_indices = std::unique_ptr<uint32_t[]>(new uint32_t [numTris * 3]);
 
 	uint32_t k = 0, l = 0;
 	for(uint32_t i = 0; i < numFaces; i++)
@@ -51,12 +51,12 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]
 	setup_strides_offsets();
 }
 
-Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::shared_ptr<uint32_t[]> indices, 
-           std::shared_ptr<float[]> verts, std::string material, uint32_t vertStride,
+Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::unique_ptr<uint32_t[]> indices, 
+           std::unique_ptr<float[]> verts, std::string material, uint32_t vertStride,
 		   uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
 	m_numTris(numTris),
-	m_indices(indices),
-	m_verts(verts),
+	m_indices(std::move(indices)),
+	m_verts(std::move(verts)),
 	m_material(material),
 	m_vertAttribs(vertexAttribs),
 	m_vertStride(vertStride),
@@ -67,17 +67,17 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::shared_ptr<uint32_t[]>
 	setup_strides_offsets();
 }
 
-std::string Mesh::get_material()
+const std::string& Mesh::get_material() const
 {
 	return m_material;
 }
 
-void Mesh::set_material(std::string material)
+void Mesh::set_material(const std::string& material)
 {
 	m_material = material;
 }
 
-bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
+bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 {
 	if(!m_valid)
 		return false;
@@ -134,9 +134,9 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
 	return hit;
 }
 
-std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
+std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 {
-	std::vector<std::shared_ptr<Mesh>> result = {};
+	std::vector<std::shared_ptr<const Mesh>> result = {};
 
 	//load meshes with qobj:
 	//---------------
@@ -154,11 +154,11 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 	//---------------
 	for(uint32_t i = 0; i < numMeshes; i++)
 	{
-		std::shared_ptr<uint32_t[]> indices = std::shared_ptr<uint32_t[]>(new uint32_t[meshes[i].numIndices]);
-		std::shared_ptr<float[]> verts = std::shared_ptr<float[]>(new float[meshes[i].numVertices * meshes[i].vertexStride]);
+		std::unique_ptr<uint32_t[]> indices = std::unique_ptr<uint32_t[]>(new uint32_t[meshes[i].numIndices]);
+		std::unique_ptr<float[]> verts = std::unique_ptr<float[]>(new float[meshes[i].numVertices * meshes[i].vertexStride]);
 
-		//unfortuntaely we need to copy the data returned by qobj since we need shared_ptrs - TODO: fix this!!
-		//(we cant use a custom deleter since we have 2 separate shared_ptrs)
+		//unfortuntaely we need to copy the data returned by qobj since we need unique_ptrs - TODO: fix this!!
+		//(we cant use a custom deleter since we have 2 separate unique_ptrs)
 
 		memcpy(indices.get(), meshes[i].indices, meshes[i].numIndices * sizeof(uint32_t));
 		memcpy(verts.get(), meshes[i].vertices, meshes[i].numVertices * sizeof(float) * meshes[i].vertexStride);
@@ -171,7 +171,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL)
 			attribs |= VERTEX_ATTRIB_NORMAL;
 
-		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, indices, verts, "", 
+		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, std::move(indices), std::move(verts), "", 
 		                 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
@@ -182,7 +182,7 @@ std::vector<std::shared_ptr<Mesh>> Mesh::from_obj(std::string path)
 	return result;
 }
 
-std::shared_ptr<Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
+std::shared_ptr<const Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
 {
 	//create initial vertices and indices:
 	//---------------
@@ -237,21 +237,21 @@ std::shared_ptr<Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smoothNor
 
 	//copy to shared ptrs (no way to transfer ownership) and return mesh:
 	//---------------
-	std::shared_ptr<float[]> verticesShared = std::shared_ptr<float[]>(new float[vertices.size()]);
-	std::shared_ptr<uint32_t[]> indicesShared = std::shared_ptr<uint32_t[]>(new uint32_t[indices.size()]);
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[vertices.size()]);
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[indices.size()]);
 
-	std::copy(vertices.begin(), vertices.end(), verticesShared.get());
-	std::copy(indices.begin(), indices.end(), indicesShared.get());
+	std::copy(vertices.begin(), vertices.end(), verticesUnique.get());
+	std::copy(indices.begin(), indices.end(), indicesUnique.get());
 
 	uint32_t attribs = VERTEX_ATTRIB_POSITION;
 	if(smoothNormals)
 		attribs |= VERTEX_ATTRIB_NORMAL;
 
-	return std::make_shared<Mesh>(attribs, (uint32_t)indices.size() / 3, indicesShared, 
-	                              verticesShared, "", 3, 0, UINT32_MAX, 0);
+	return std::make_shared<Mesh>(attribs, (uint32_t)indices.size() / 3, std::move(indicesUnique), 
+	                              std::move(verticesUnique), "", 3, 0, UINT32_MAX, 0);
 }
 
-std::shared_ptr<Mesh> Mesh::unit_cube()
+std::shared_ptr<const Mesh> Mesh::unit_cube()
 {
 	float vertices[] = {
 		-0.5f, -0.5f,  0.5f,
@@ -264,8 +264,8 @@ std::shared_ptr<Mesh> Mesh::unit_cube()
 		-0.5f,  0.5f, -0.5f
 	};
 	uint32_t numVertices = sizeof(vertices) / sizeof(float);
-	std::shared_ptr<float[]> verticesShared = std::shared_ptr<float[]>(new float[numVertices]);
-	memcpy(verticesShared.get(), vertices, sizeof(vertices));
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
+	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
 
 	uint32_t indices[] = {
 		0, 1, 2,
@@ -282,13 +282,13 @@ std::shared_ptr<Mesh> Mesh::unit_cube()
 		4, 5, 1
 	};
 	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
-	std::shared_ptr<uint32_t[]> indicesShared = std::shared_ptr<uint32_t[]>(new uint32_t[numIndices]);
-	memcpy(indicesShared.get(), indices, sizeof(indices));
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
+	memcpy(indicesUnique.get(), indices, sizeof(indices));
 
-	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, indicesShared, verticesShared, "", 3, 0);
+	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
 }
 
-std::shared_ptr<Mesh> Mesh::unit_square()
+std::shared_ptr<const Mesh> Mesh::unit_square()
 {
 	float vertices[] = {
 		-0.5f,  0.0f,  0.5f,
@@ -297,18 +297,18 @@ std::shared_ptr<Mesh> Mesh::unit_square()
 		-0.5f,  0.0f, -0.5f
 	};
 	uint32_t numVertices = sizeof(vertices) / sizeof(float);
-	std::shared_ptr<float[]> verticesShared = std::shared_ptr<float[]>(new float[numVertices]);
-	memcpy(verticesShared.get(), vertices, sizeof(vertices));
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
+	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
 
 	uint32_t indices[] = {
 		0, 1, 2,
 		0, 2, 3
 	};
 	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
-	std::shared_ptr<uint32_t[]> indicesShared = std::shared_ptr<uint32_t[]>(new uint32_t[numIndices]);
-	memcpy(indicesShared.get(), indices, sizeof(indices));
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
+	memcpy(indicesUnique.get(), indices, sizeof(indices));
 
-	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, indicesShared, verticesShared, "", 3, 0);
+	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
 }
 
 std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
@@ -381,7 +381,7 @@ std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, co
 
 //-------------------------------------------//
 
-bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v)
+bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const
 {
 	//TODO: allow specification of handedness and winding order
 

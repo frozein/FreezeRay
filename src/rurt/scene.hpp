@@ -21,16 +21,16 @@ namespace rurt
 class Scene
 {
 public:
-	Scene(std::vector<std::pair<std::shared_ptr<Object>, mat4>> objects);
+	Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& objects);
 
-	vec3 intersect(const Ray& ray);
+	vec3 intersect(const Ray& ray) const;
 
 private:
-	vec3 sky_color(const Ray& ray);
+	vec3 sky_color(const Ray& ray) const;
 
 	struct ObjectRef
 	{
-		std::shared_ptr<Object> object;
+		std::shared_ptr<const Object> object;
 		mat4 transform;
 		mat4 invTransform;
 		mat4 invTransformNoTranslate;

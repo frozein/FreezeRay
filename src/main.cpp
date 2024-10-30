@@ -43,19 +43,19 @@ int main(int argc, char** argv)
 	//---------------
 	//std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
 
-	std::shared_ptr<rurt::Mesh> mesh = rurt::Mesh::unit_cube();
-	std::vector<std::shared_ptr<rurt::Mesh>> meshList = {mesh};
-	std::vector<std::shared_ptr<rurt::Material>> materialList = {};
+	std::shared_ptr<const rurt::Mesh> mesh = rurt::Mesh::unit_cube();
+	std::vector<std::shared_ptr<const rurt::Mesh>> meshList = {mesh};
+	std::vector<std::shared_ptr<const rurt::Material>> materialList = {};
 
-	std::shared_ptr<rurt::Object> object = std::make_shared<rurt::Object>(meshList, materialList);
+	std::shared_ptr<const rurt::Object> object = std::make_shared<rurt::Object>(meshList, materialList);
 	mat4 objectTransform = translate(vec3(1.0f, 0.5f, 0.0f)) * rotate(vec3(45.0f, 0.0f, 0.0f)) * scale(vec3(1.5f, 1.0f, 1.0f));
-	std::vector<std::pair<std::shared_ptr<rurt::Object>, mat4>> objectList = {{object, objectTransform}};
+	std::vector<std::pair<std::shared_ptr<const rurt::Object>, mat4>> objectList = {{object, objectTransform}};
 
-	std::shared_ptr<rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList);
+	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList);
 
 	//create renderer:
 	//---------------
-	rurt::Camera camera = rurt::Camera(
+	std::shared_ptr<const rurt::Camera> camera = std::make_shared<rurt::Camera>(
 		vec3(0.0f, 0.0f, 3.0f), 
 		normalize(vec3(0.0f, 0.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 

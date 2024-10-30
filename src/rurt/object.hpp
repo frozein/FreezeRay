@@ -18,12 +18,12 @@ namespace rurt
 class Object
 {
 public:
-	Object(std::vector<std::shared_ptr<Mesh>> meshes, std::vector<std::shared_ptr<Material>> materials);
+	Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std::vector<std::shared_ptr<const Material>>& materials);
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal);
+	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal) const;
 
 private:
-	std::vector<std::pair<std::shared_ptr<Mesh>, std::shared_ptr<Material>>> m_meshes;
+	std::vector<std::pair<std::shared_ptr<const Mesh>, std::shared_ptr<const Material>>> m_meshes;
 };
 
 }; //namespace rurt

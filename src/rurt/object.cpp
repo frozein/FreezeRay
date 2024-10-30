@@ -5,13 +5,13 @@
 namespace rurt
 {
 
-Object::Object(std::vector<std::shared_ptr<Mesh>> meshes, std::vector<std::shared_ptr<Material>> materials)
+Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std::vector<std::shared_ptr<const Material>>& materials)
 {
 	//assign each mesh its material, add to vector:
 	//---------------
 	for(uint32_t i = 0; i < meshes.size(); i++)
 	{
-		std::shared_ptr<Material> mat = nullptr;
+		std::shared_ptr<const Material> mat = nullptr;
 		for(uint32_t j = 0; j < materials.size(); j++)
 		{
 			if(meshes[i]->get_material() == materials[i]->get_name())
@@ -26,7 +26,7 @@ Object::Object(std::vector<std::shared_ptr<Mesh>> meshes, std::vector<std::share
 	}
 }
 
-bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal)
+bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 {
 	//loop over every mesh, check for intersection:
 	//---------------

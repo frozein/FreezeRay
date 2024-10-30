@@ -9,17 +9,17 @@ std::shared_ptr<Material> Material::m_defaultDiffuse = std::make_shared<Material
 
 //-------------------------------------------//
 
-Material::Material(std::string name)
+Material::Material(const std::string& name)
 {
 	m_name = name;
 }
 
-std::string Material::get_name()
+const std::string& Material::get_name() const
 {
 	return m_name;
 }
 
-void Material::set_name(std::string name)
+void Material::set_name(const std::string& name)
 {
 	m_name = name;
 }

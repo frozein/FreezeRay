@@ -29,22 +29,22 @@ enum VertexAttributes : uint32_t
 class Mesh
 {
 public:
-	Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::shared_ptr<uint32_t[]> faceIndices, std::shared_ptr<uint32_t[]> vertIndices, 
-	     std::shared_ptr<float[]> verts, std::string material = "", uint32_t vertStride = UINT32_MAX, uint32_t vertPosOffset = UINT32_MAX, 
+	Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::unique_ptr<uint32_t[]> faceIndices, std::unique_ptr<uint32_t[]> vertIndices, 
+	     std::unique_ptr<float[]> verts, std::string material = "", uint32_t vertStride = UINT32_MAX, uint32_t vertPosOffset = UINT32_MAX, 
 		 uint32_t vertUvOffset = UINT32_MAX, uint32_t vertNormalOffset = UINT32_MAX);
-	Mesh(uint32_t vertexAttribs, uint32_t numTris, std::shared_ptr<uint32_t[]> indices, std::shared_ptr<float[]> verts, 
+	Mesh(uint32_t vertexAttribs, uint32_t numTris, std::unique_ptr<uint32_t[]> indices, std::unique_ptr<float[]> verts, 
 	     std::string material = "", uint32_t vertStride = UINT32_MAX, uint32_t vertPosOffset = UINT32_MAX, 
 		 uint32_t vertUvOffset = UINT32_MAX, uint32_t vertNormalOffset = UINT32_MAX);
 
-	std::string get_material();
-	void set_material(std::string material);
+	const std::string& get_material() const;
+	void set_material(const std::string& material);
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal);
+	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal) const;
 
-	static std::vector<std::shared_ptr<Mesh>> from_obj(std::string path);
-	static std::shared_ptr<Mesh> unit_sphere(uint32_t numSubdivisions = 2, bool smoothNormals = true);
-	static std::shared_ptr<Mesh> unit_cube();
-	static std::shared_ptr<Mesh> unit_square();
+	static std::vector<std::shared_ptr<const Mesh>> from_obj(std::string path);
+	static std::shared_ptr<const Mesh> unit_sphere(uint32_t numSubdivisions = 2, bool smoothNormals = true);
+	static std::shared_ptr<const Mesh> unit_cube();
+	static std::shared_ptr<const Mesh> unit_square();
 
 private:
 	bool m_valid = true; //whether or not this mesh is valid, can become invalid if given nonsense params
@@ -58,10 +58,10 @@ private:
 	uint32_t m_vertNormalOffset;
 
 	uint32_t m_numTris;
-	std::shared_ptr<uint32_t[]> m_indices;
-	std::shared_ptr<float[]> m_verts;
+	std::unique_ptr<uint32_t[]> m_indices;
+	std::unique_ptr<float[]> m_verts;
 
-	bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
+	bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const;
 
 	void setup_strides_offsets();
 

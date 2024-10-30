@@ -19,10 +19,10 @@ namespace rurt
 class Material
 {
 public:
-	Material(std::string name);
+	Material(const std::string& name);
 
-	std::string get_name();
-	void set_name(std::string name);
+	const std::string& get_name() const;
+	void set_name(const std::string& name);
 
 	static std::shared_ptr<Material> default_diffuse();
 

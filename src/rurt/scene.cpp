@@ -7,7 +7,7 @@
 namespace rurt
 {
 
-Scene::Scene(std::vector<std::pair<std::shared_ptr<Object>, mat4>> objects)
+Scene::Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& objects)
 {
 	for(uint32_t i = 0; i < objects.size(); i++)
 	{
@@ -24,7 +24,7 @@ Scene::Scene(std::vector<std::pair<std::shared_ptr<Object>, mat4>> objects)
 	}
 }
 
-vec3 Scene::intersect(const Ray& ray)
+vec3 Scene::intersect(const Ray& ray) const
 {
 	float minT = INFINITY;
 	vec2 minUV;
@@ -65,7 +65,7 @@ vec3 Scene::intersect(const Ray& ray)
 
 //-------------------------------------------//
 
-vec3 Scene::sky_color(const Ray& ray)
+vec3 Scene::sky_color(const Ray& ray) const
 {
 	float skyPos = ray.direction().y * 0.5f + 0.5f;
 	return (1.0f - skyPos) * vec3(0.71f, 0.85f, 0.90f) + skyPos * vec3(0.00f, 0.45f, 0.74f);

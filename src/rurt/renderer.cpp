@@ -7,14 +7,14 @@
 namespace rurt
 {
 
-Renderer::Renderer(std::shared_ptr<Scene> scene, const Camera& cam, uint32_t imageW, uint32_t imageH) : 
+Renderer::Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH) : 
 	m_scene(scene),
 	m_cam(cam), 
 	m_imageW(imageW), 
 	m_imageH(imageH)
 {
-	m_camInvView = inverse(m_cam.view());
-	m_camInvProj = inverse(m_cam.proj());
+	m_camInvView = inverse(m_cam->view());
+	m_camInvProj = inverse(m_cam->proj());
 }
 
 Renderer::~Renderer()
