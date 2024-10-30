@@ -11,6 +11,12 @@
 namespace rurt
 {
 
+std::unordered_map<std::pair<uint32_t, bool>, std::shared_ptr<const Mesh>, Mesh::HashPair> Mesh::m_unitSpheres = {};
+std::shared_ptr<const Mesh> Mesh::m_unitCube = Mesh::gen_unit_cube();
+std::shared_ptr<const Mesh> Mesh::m_unitSquare = Mesh::gen_unit_square();
+
+//-------------------------------------------//
+
 Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::unique_ptr<uint32_t[]> faceIndices, 
            std::unique_ptr<uint32_t[]> vertIndices, std::unique_ptr<float[]> verts, std::string material,
 		   uint32_t vertStride, uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
@@ -134,6 +140,8 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 	return hit;
 }
 
+//-------------------------------------------//
+
 std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 {
 	std::vector<std::shared_ptr<const Mesh>> result = {};
@@ -184,199 +192,27 @@ std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 
 std::shared_ptr<const Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
 {
-	//create initial vertices and indices:
-	//---------------
-	const float x = 0.525731112119133606f;
-	const float z = 0.850650808352039932f;
-	const float n = 0.0f;
-	
-	std::vector<float> vertices= {
-		-x, n, z,  
-		 x, n, z, 
-		-x, n,-z,  
-		 x, n,-z,
-		 n, z, x,  
-		 n, z,-x,  
-		 n,-z, x,  
-		 n,-z,-x,
-		 z, x, n, 
-		-z, x, n,  
-		 z,-x, n, 
-		-z,-x, n
-	};
+	std::shared_ptr<const Mesh> mesh;
+	if(m_unitSpheres.find({numSubdivisions, smoothNormals}) != m_unitSpheres.end())
+		mesh = m_unitSpheres[{numSubdivisions, smoothNormals}];
+	else
+	{
+		mesh = gen_unit_sphere(numSubdivisions, smoothNormals);
+		m_unitSpheres.insert({{numSubdivisions, smoothNormals}, mesh});
+	}
 
-	std::vector<uint32_t> indices = {
-		 0,  4,  1,  
-		 0,  9,  4,  
-		 9,  5,  4,  
-		 4,  5,  8,   
-		 4,  8,  1,
-		 8, 10,  1,  
-		 8,  3, 10,  
-		 5,  3,  8,  
-		 5,  2,  3,   
-		 2,  7,  3,
-		 7, 10,  3,  
-		 7,  6, 10,  
-		 7, 11,  6, 
-		11,  0,  6,  
-		 0,  1,  6,
-		 6,  1, 10,  
-		 9,  0, 11,  
-		 9, 11,  2,  
-		 9,  2,  5,   
-		 7,  2, 11
-	};
-
-	std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair> vertexMap;
-
-	//subdivide:
-	//---------------
-	for(uint32_t i = 0; i < numSubdivisions; i++)
-		indices = icosphere_subdivide(vertices, indices, vertexMap);
-
-	//copy to shared ptrs (no way to transfer ownership) and return mesh:
-	//---------------
-	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[vertices.size()]);
-	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[indices.size()]);
-
-	std::copy(vertices.begin(), vertices.end(), verticesUnique.get());
-	std::copy(indices.begin(), indices.end(), indicesUnique.get());
-
-	uint32_t attribs = VERTEX_ATTRIB_POSITION;
-	if(smoothNormals)
-		attribs |= VERTEX_ATTRIB_NORMAL;
-
-	return std::make_shared<Mesh>(attribs, (uint32_t)indices.size() / 3, std::move(indicesUnique), 
-	                              std::move(verticesUnique), "", 3, 0, UINT32_MAX, 0);
+	return mesh;
 }
+
 
 std::shared_ptr<const Mesh> Mesh::unit_cube()
 {
-	float vertices[] = {
-		-0.5f, -0.5f,  0.5f,
-		 0.5f, -0.5f,  0.5f,
-		 0.5f,  0.5f,  0.5f,
-		-0.5f,  0.5f,  0.5f,
-		-0.5f, -0.5f, -0.5f,
-		 0.5f, -0.5f, -0.5f,
-		 0.5f,  0.5f, -0.5f,
-		-0.5f,  0.5f, -0.5f
-	};
-	uint32_t numVertices = sizeof(vertices) / sizeof(float);
-	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
-	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
-
-	uint32_t indices[] = {
-		0, 1, 2,
-		0, 2, 3,
-		5, 4, 7,
-		5, 7, 6,
-		4, 0, 3,
-		4, 3, 7,
-		1, 5, 6,
-		1, 6, 2,
-		3, 2, 6,
-		3, 6, 7,
-		4, 1, 0,
-		4, 5, 1
-	};
-	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
-	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
-	memcpy(indicesUnique.get(), indices, sizeof(indices));
-
-	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
+	return m_unitCube;
 }
 
 std::shared_ptr<const Mesh> Mesh::unit_square()
 {
-	float vertices[] = {
-		-0.5f,  0.0f,  0.5f,
-		 0.5f,  0.0f,  0.5f,
-		 0.5f,  0.0f, -0.5f,
-		-0.5f,  0.0f, -0.5f
-	};
-	uint32_t numVertices = sizeof(vertices) / sizeof(float);
-	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
-	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
-
-	uint32_t indices[] = {
-		0, 1, 2,
-		0, 2, 3
-	};
-	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
-	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
-	memcpy(indicesUnique.get(), indices, sizeof(indices));
-
-	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
-}
-
-std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
-                                                std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap)
-{
-	std::vector<uint32_t> result;
-
-	for(uint32_t i = 0; i < indices.size(); i += 3)
-	{
-		uint32_t mid[3];
-		for(uint32_t j = 0; j < 3; j++)
-		{
-			uint32_t edge1 = indices[i + j];
-			uint32_t edge2 = indices[i + ((j + 1) % 3)];
-			if(edge1 > edge2)
-			{
-				uint32_t temp = edge1;
-				edge1 = edge2;
-				edge2 = temp;
-			}
-
-			std::pair<uint32_t, uint32_t> key = std::make_pair(edge1, edge2);
-			auto idx = vertexMap.insert({key, (uint32_t)vertices.size() / 3});
-			if(idx.second)
-			{
-				float x1 = vertices[edge1 * 3 + 0];
-				float y1 = vertices[edge1 * 3 + 1];
-				float z1 = vertices[edge1 * 3 + 2];
-
-				float x2 = vertices[edge2 * 3 + 0];
-				float y2 = vertices[edge2 * 3 + 1];
-				float z2 = vertices[edge2 * 3 + 2];
-
-				float newX = x1 + x2;
-				float newY = y1 + y2;
-				float newZ = z1 + z2;
-				
-				float len = sqrtf(newX * newX + newY * newY + newZ * newZ);
-				newX /= len;
-				newY /= len;
-				newZ /= len;
-
-				vertices.push_back(newX);
-				vertices.push_back(newY);
-				vertices.push_back(newZ);
-			}
-
-			mid[j] = idx.first->second;
-		}
-
-		result.push_back(indices[i + 0]);
-		result.push_back(mid[0]);
-		result.push_back(mid[2]);
-
-		result.push_back(indices[i + 1]);
-		result.push_back(mid[1]);
-		result.push_back(mid[0]);
-
-		result.push_back(indices[i + 2]);
-		result.push_back(mid[2]);
-		result.push_back(mid[1]);
-
-		result.push_back(mid[0]);
-		result.push_back(mid[1]);
-		result.push_back(mid[2]);
-	}
-
-	return result;
+	return m_unitSquare;
 }
 
 //-------------------------------------------//
@@ -470,6 +306,208 @@ void Mesh::setup_strides_offsets()
 		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
 			m_vertUvOffset += 2;
 	}
+}
+
+//-------------------------------------------//
+
+std::shared_ptr<const Mesh> Mesh::gen_unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
+{
+	std::cout << "here" << std::endl;
+
+
+	//create initial vertices and indices:
+	//---------------
+	const float x = 0.525731112119133606f;
+	const float z = 0.850650808352039932f;
+	const float n = 0.0f;
+	
+	std::vector<float> vertices= {
+		-x, n, z,  
+		 x, n, z, 
+		-x, n,-z,  
+		 x, n,-z,
+		 n, z, x,  
+		 n, z,-x,  
+		 n,-z, x,  
+		 n,-z,-x,
+		 z, x, n, 
+		-z, x, n,  
+		 z,-x, n, 
+		-z,-x, n
+	};
+
+	std::vector<uint32_t> indices = {
+		 0,  4,  1,  
+		 0,  9,  4,  
+		 9,  5,  4,  
+		 4,  5,  8,   
+		 4,  8,  1,
+		 8, 10,  1,  
+		 8,  3, 10,  
+		 5,  3,  8,  
+		 5,  2,  3,   
+		 2,  7,  3,
+		 7, 10,  3,  
+		 7,  6, 10,  
+		 7, 11,  6, 
+		11,  0,  6,  
+		 0,  1,  6,
+		 6,  1, 10,  
+		 9,  0, 11,  
+		 9, 11,  2,  
+		 9,  2,  5,   
+		 7,  2, 11
+	};
+
+	std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair> vertexMap;
+
+	//subdivide:
+	//---------------
+	for(uint32_t i = 0; i < numSubdivisions; i++)
+		indices = icosphere_subdivide(vertices, indices, vertexMap);
+
+	//copy to shared ptrs (no way to transfer ownership) and return mesh:
+	//---------------
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[vertices.size()]);
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[indices.size()]);
+
+	std::copy(vertices.begin(), vertices.end(), verticesUnique.get());
+	std::copy(indices.begin(), indices.end(), indicesUnique.get());
+
+	uint32_t attribs = VERTEX_ATTRIB_POSITION;
+	if(smoothNormals)
+		attribs |= VERTEX_ATTRIB_NORMAL;
+
+	return std::make_shared<Mesh>(attribs, (uint32_t)indices.size() / 3, std::move(indicesUnique), 
+	                              std::move(verticesUnique), "", 3, 0, UINT32_MAX, 0);
+}
+
+std::shared_ptr<const Mesh> Mesh::gen_unit_cube()
+{
+	float vertices[] = {
+		-0.5f, -0.5f,  0.5f,
+		 0.5f, -0.5f,  0.5f,
+		 0.5f,  0.5f,  0.5f,
+		-0.5f,  0.5f,  0.5f,
+		-0.5f, -0.5f, -0.5f,
+		 0.5f, -0.5f, -0.5f,
+		 0.5f,  0.5f, -0.5f,
+		-0.5f,  0.5f, -0.5f
+	};
+	uint32_t numVertices = sizeof(vertices) / sizeof(float);
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
+	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
+
+	uint32_t indices[] = {
+		0, 1, 2,
+		0, 2, 3,
+		5, 4, 7,
+		5, 7, 6,
+		4, 0, 3,
+		4, 3, 7,
+		1, 5, 6,
+		1, 6, 2,
+		3, 2, 6,
+		3, 6, 7,
+		4, 1, 0,
+		4, 5, 1
+	};
+	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
+	memcpy(indicesUnique.get(), indices, sizeof(indices));
+
+	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
+}
+
+std::shared_ptr<const Mesh> Mesh::gen_unit_square()
+{
+	float vertices[] = {
+		-0.5f,  0.0f,  0.5f,
+		 0.5f,  0.0f,  0.5f,
+		 0.5f,  0.0f, -0.5f,
+		-0.5f,  0.0f, -0.5f
+	};
+	uint32_t numVertices = sizeof(vertices) / sizeof(float);
+	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
+	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
+
+	uint32_t indices[] = {
+		0, 1, 2,
+		0, 2, 3
+	};
+	uint32_t numIndices = sizeof(indices) / sizeof(uint32_t);
+	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
+	memcpy(indicesUnique.get(), indices, sizeof(indices));
+
+	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
+}
+
+std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
+                                                std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap)
+{
+	std::vector<uint32_t> result;
+
+	for(uint32_t i = 0; i < indices.size(); i += 3)
+	{
+		uint32_t mid[3];
+		for(uint32_t j = 0; j < 3; j++)
+		{
+			uint32_t edge1 = indices[i + j];
+			uint32_t edge2 = indices[i + ((j + 1) % 3)];
+			if(edge1 > edge2)
+			{
+				uint32_t temp = edge1;
+				edge1 = edge2;
+				edge2 = temp;
+			}
+
+			std::pair<uint32_t, uint32_t> key = std::make_pair(edge1, edge2);
+			auto idx = vertexMap.insert({key, (uint32_t)vertices.size() / 3});
+			if(idx.second)
+			{
+				float x1 = vertices[edge1 * 3 + 0];
+				float y1 = vertices[edge1 * 3 + 1];
+				float z1 = vertices[edge1 * 3 + 2];
+
+				float x2 = vertices[edge2 * 3 + 0];
+				float y2 = vertices[edge2 * 3 + 1];
+				float z2 = vertices[edge2 * 3 + 2];
+
+				float newX = x1 + x2;
+				float newY = y1 + y2;
+				float newZ = z1 + z2;
+				
+				float len = sqrtf(newX * newX + newY * newY + newZ * newZ);
+				newX /= len;
+				newY /= len;
+				newZ /= len;
+
+				vertices.push_back(newX);
+				vertices.push_back(newY);
+				vertices.push_back(newZ);
+			}
+
+			mid[j] = idx.first->second;
+		}
+
+		result.push_back(indices[i + 0]);
+		result.push_back(mid[0]);
+		result.push_back(mid[2]);
+
+		result.push_back(indices[i + 1]);
+		result.push_back(mid[1]);
+		result.push_back(mid[0]);
+
+		result.push_back(indices[i + 2]);
+		result.push_back(mid[2]);
+		result.push_back(mid[1]);
+
+		result.push_back(mid[0]);
+		result.push_back(mid[1]);
+		result.push_back(mid[2]);
+	}
+
+	return result;
 }
 
 }; //namespace rurt

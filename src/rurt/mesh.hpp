@@ -41,6 +41,8 @@ public:
 
 	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal) const;
 
+	//-------------------------------------------//
+
 	static std::vector<std::shared_ptr<const Mesh>> from_obj(std::string path);
 	static std::shared_ptr<const Mesh> unit_sphere(uint32_t numSubdivisions = 2, bool smoothNormals = true);
 	static std::shared_ptr<const Mesh> unit_cube();
@@ -65,7 +67,7 @@ private:
 
 	void setup_strides_offsets();
 
-	//helpers for icosphere generation:
+	//-------------------------------------------//
 
 	struct HashPair 
 	{
@@ -82,6 +84,15 @@ private:
 			return hash1;
 		}
 	};
+
+	static std::unordered_map<std::pair<uint32_t, bool>, std::shared_ptr<const Mesh>, HashPair> m_unitSpheres;
+	static std::shared_ptr<const Mesh> m_unitCube;
+	static std::shared_ptr<const Mesh> m_unitSquare;
+
+	static std::shared_ptr<const Mesh> gen_unit_sphere(uint32_t numSubdivisions, bool smoothNormals);
+	static std::shared_ptr<const Mesh> gen_unit_cube();
+	static std::shared_ptr<const Mesh> gen_unit_square();
+
 	static std::vector<uint32_t> icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
 	                                                 std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap);
 };

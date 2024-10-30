@@ -43,13 +43,20 @@ int main(int argc, char** argv)
 	//---------------
 	//std::vector<std::shared_ptr<rurt::Mesh>> meshes = rurt::Mesh::from_obj("assets/viking_room.obj");
 
-	std::shared_ptr<const rurt::Mesh> mesh = rurt::Mesh::unit_cube();
-	std::vector<std::shared_ptr<const rurt::Mesh>> meshList = {mesh};
-	std::vector<std::shared_ptr<const rurt::Material>> materialList = {};
+	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_cube();
+	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Object> object = std::make_shared<rurt::Object>(meshList, materialList);
-	mat4 objectTransform = translate(vec3(1.0f, 0.5f, 0.0f)) * rotate(vec3(45.0f, 0.0f, 0.0f)) * scale(vec3(1.5f, 1.0f, 1.0f));
-	std::vector<std::pair<std::shared_ptr<const rurt::Object>, mat4>> objectList = {{object, objectTransform}};
+	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
+	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {};
+	std::shared_ptr<const rurt::Object> object1 = std::make_shared<rurt::Object>(meshList1, materialList1);
+	mat4 objectTransform1 = translate(vec3(1.0f, 0.5f, 0.0f)) * rotate(vec3(45.0f, 0.0f, 0.0f)) * scale(vec3(1.5f, 1.0f, 1.0f));
+	
+	std::vector<std::shared_ptr<const rurt::Mesh>> meshList2 = {mesh2};
+	std::vector<std::shared_ptr<const rurt::Material>> materialList2 = {};
+	std::shared_ptr<const rurt::Object> object2 = std::make_shared<rurt::Object>(meshList2, materialList2);
+	mat4 objectTransform2 = translate(vec3(-1.0f, -0.3f, 0.0f)) * rotate(vec3(0.0f, 45.0f, 0.0f)) * scale(vec3(1.0f, 1.3f, 1.1f));
+
+	std::vector<std::pair<std::shared_ptr<const rurt::Object>, mat4>> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
 	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList);
 
