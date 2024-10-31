@@ -3,6 +3,8 @@
 #define QOBJ_IMPLEMENTATION
 #include "quickobj.h"
 
+#include "constants.hpp"
+
 #define CULL_BACKFACE 1
 #define EPSILON 0.0001f
 
@@ -251,7 +253,7 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 		return false;
 
 	t = dot(v0v2, qvec) * invDet;
-	return true;
+	return t > RURT_EPSILON;
 }
 
 void Mesh::setup_strides_offsets()

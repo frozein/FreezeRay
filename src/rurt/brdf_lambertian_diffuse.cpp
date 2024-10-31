@@ -11,13 +11,13 @@ BRDFLambertianDiffuse::BRDFLambertianDiffuse(vec3 color) : m_color(color)
 
 }
 
-vec3 BRDFLambertianDiffuse::f(const IntersectionInfo& info, const vec3& i, const vec3& o, float& pdfVal) const
+vec3 BRDFLambertianDiffuse::f(const HitInfo& info, const vec3& i, const vec3& o, float& pdfVal) const
 {
 	pdfVal = pdf(info, i, o);
 	return m_color * RURT_INV_PI;
 }
 
-float BRDFLambertianDiffuse::pdf(const IntersectionInfo& info, const vec3& i, const vec3& o) const
+float BRDFLambertianDiffuse::pdf(const HitInfo& info, const vec3& i, const vec3& o) const
 {
 	return RURT_INV_2_PI;
 }

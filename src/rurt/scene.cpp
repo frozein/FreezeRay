@@ -1,6 +1,5 @@
 #include "scene.hpp"
-
-#define EPSILON 0.0001f
+#include "constants.hpp"
 
 //-------------------------------------------//
 
@@ -13,7 +12,13 @@ Scene::Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& 
 	{
 		ObjectRef ref;
 		ref.object = objects[i].first;
+
 		ref.transform = objects[i].second;
+		ref.transformNoTranslate = objects[i].second;
+		ref.transformNoTranslate.m[3][0] = 0.0f;
+		ref.transformNoTranslate.m[3][1] = 0.0f;
+		ref.transformNoTranslate.m[3][2] = 0.0f;
+
 		ref.invTransform = inverse(objects[i].second);
 		ref.invTransformNoTranslate = ref.invTransform;
 		ref.invTransformNoTranslate.m[3][0] = 0.0f;
@@ -24,51 +29,89 @@ Scene::Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& 
 	}
 }
 
-vec3 Scene::intersect(const Ray& ray) const
+RaycastInfo Scene::intersect(const Ray& worldRay, std::shared_ptr<const Material>& hitMaterial) const
 {
 	float minT = INFINITY;
+
+	vec3 minWorldHitPos;
+	vec3 minObjectHitPos;
+
 	vec2 minUV;
-	vec3 minNormal;
-	uint32_t minHitIdx;
+	vec3 minWorldNormal;
+	vec3 minObjectNormal;
+	std::shared_ptr<const Material> minMaterial;
+	
 	bool hit = false;
 
 	for(uint32_t i = 0; i < m_objects.size(); i++)
 	{
-		Ray objectRay = ray.transformed(m_objects[i].invTransform, m_objects[i].invTransformNoTranslate);
+		Ray objectRay = worldRay.transformed(m_objects[i].invTransform, m_objects[i].invTransformNoTranslate);
 
 		float t;
 		vec2 uv;
-		vec3 normal;
-		if(m_objects[i].object->intersect(objectRay, t, uv, normal))
+		vec3 objectNormal;
+		std::shared_ptr<const Material> material;
+		if(m_objects[i].object->intersect(objectRay, t, uv, objectNormal, material))
 		{
 			hit |= true;
 
-			vec3 localHitPos = objectRay.at(t);
-			vec3 hitPos = (m_objects[i].transform * vec4(localHitPos, 1.0)).xyz();
-			t = distance(ray.origin(), hitPos);
+			vec3 objectHitPos = objectRay.at(t);
+			vec3 worldHitPos = (m_objects[i].transform * vec4(objectHitPos, 1.0)).xyz();
+			t = distance(worldRay.origin(), worldHitPos);
 
 			if(t < minT)
 			{
 				minT = t;
+
+				minWorldHitPos = worldHitPos;
+				minObjectHitPos = objectHitPos;
+
 				minUV = uv;
-				minNormal = normal;
-				minHitIdx = i;
+				minWorldNormal = (m_objects[i].transformNoTranslate * vec4(objectNormal, 1.0)).xyz();
+				minObjectNormal = objectNormal;
+				minMaterial = material;
 			}
 		}
 	}
 
+	RaycastInfo retval = {};
 	if(hit)
-		return normalize(vec3(abs(minNormal.x), abs(minNormal.y), abs(minNormal.z)));
+	{
+		hitMaterial = minMaterial;
+
+		retval.hitInfo.worldPos = minWorldHitPos;
+		retval.hitInfo.objectPos = minObjectHitPos;
+		retval.hitInfo.worldNormal = normalize(minWorldNormal);
+		retval.hitInfo.objectNormal = normalize(minObjectNormal);
+		retval.hitInfo.uv = minUV;
+	}
 	else
-		return sky_color(ray);
+	{
+		hitMaterial = nullptr;
+
+		retval.missInfo.skyColor = sky_color(worldRay);
+		retval.missInfo.skyEmission = sky_emission(worldRay);
+	}
+
+	return retval;
 }
 
 //-------------------------------------------//
 
 vec3 Scene::sky_color(const Ray& ray) const
 {
+	//temp implementation
+
 	float skyPos = ray.direction().y * 0.5f + 0.5f;
 	return (1.0f - skyPos) * vec3(0.71f, 0.85f, 0.90f) + skyPos * vec3(0.00f, 0.45f, 0.74f);
+}
+
+vec3 Scene::sky_emission(const Ray& ray) const
+{
+	//temp implementation
+
+	float skyPos = ray.direction().y * 0.5f + 0.5f;
+	return vec3(2.0f);
 }
 
 }; //namespace rurt

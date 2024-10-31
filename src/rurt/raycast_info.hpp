@@ -1,4 +1,4 @@
-/* intersction_info.hpp
+/* raycast_info.hpp
  * 
  * contains the defintion of the intersection info struct,
  * which includes information about a particular ray intersection
@@ -15,7 +15,7 @@ using namespace qm;
 namespace rurt
 {
 
-struct IntersectionInfo
+struct HitInfo
 {
 	vec3 worldPos;
 	vec3 objectPos;
@@ -24,6 +24,18 @@ struct IntersectionInfo
 	vec3 objectNormal;
 	
 	vec2 uv;
+};
+
+struct MissInfo
+{
+	vec3 skyColor;
+	vec3 skyEmission;
+};
+
+union RaycastInfo
+{
+	HitInfo hitInfo;
+	MissInfo missInfo;
 };
 
 }; //namespace rurt

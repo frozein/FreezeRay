@@ -1,17 +1,21 @@
 #include "renderer.hpp"
 
 #include "ray.hpp"
+#include "constants.hpp"
+
+#define RURT_RAY_BOUNCE_LIMIT 50
 
 //-------------------------------------------//
 
 namespace rurt
 {
 
-Renderer::Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH) : 
+Renderer::Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH, uint32_t spp) : 
 	m_scene(scene),
 	m_cam(cam), 
 	m_imageW(imageW), 
-	m_imageH(imageH)
+	m_imageH(imageH),
+	m_spp(spp)
 {
 	m_camInvView = inverse(m_cam->view());
 	m_camInvProj = inverse(m_cam->proj());
@@ -30,23 +34,23 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 	{
 		//generate ray for current pixel:
 		//---------------
-		vec2 pixelCenter = vec2((float)x, (float)y) + vec2(0.5f);
-		vec2 pixelUV = pixelCenter / vec2((float)m_imageW, (float)m_imageH);
-		vec2 pixelD = pixelUV * 2.0f - vec2(1.0f);
+		Ray cameraRay = get_camera_ray(x, y);
 
-		vec4 rayOrig = m_camInvView * vec4(0.0f, 0.0f, 0.0f, 1.0f);
-		vec4 rayTarget = m_camInvProj * vec4(pixelD.x, pixelD.y, 1.0f, 1.0f);
-		vec4 rayDir = m_camInvView * vec4(normalize(rayTarget.xyz()), 0.0f);
-
-		//having a normalized ray dir is useful, so we ensure its always normalized
-		Ray ray = Ray(rayOrig.xyz(), normalize(rayDir.xyz()));
-
-		//cast ray against scene:
+		//bounce ray until hit sky or bounce limit reached:
 		//---------------
-		vec3 color = m_scene->intersect(ray);
+		vec3 color = vec3(0.0f);
+		for(uint32_t i = 0; i < m_spp; i++)
+		{
+			vec3 pathColor = trace_path(cameraRay);
+			color = color + pathColor / (float)m_spp;
+		}
 
 		//write color to given buffer:
 		//---------------
+		color.r = std::max(std::min(color.r, 1.0f), 0.0f);
+		color.g = std::max(std::min(color.g, 1.0f), 0.0f);
+		color.b = std::max(std::min(color.b, 1.0f), 0.0f);
+
 		uint8_t r = (uint8_t)(color.r * 255.0f);
 		uint8_t g = (uint8_t)(color.g * 255.0f);
 		uint8_t b = (uint8_t)(color.b * 255.0f);
@@ -55,6 +59,81 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 		uint32_t writeColor = ((uint32_t)r << 24) | ((uint32_t)g << 16) | ((uint32_t)b << 8) | (uint32_t)a;
 		buf[x] = writeColor;
 	}
+}
+
+//-------------------------------------------//
+
+vec3 Renderer::trace_path(const Ray& cameraRay)
+{
+	vec3 color = vec3(1.0f);
+
+	Ray curRay = cameraRay;
+	for(uint32_t i = 0; i < RURT_RAY_BOUNCE_LIMIT; i++)
+	{
+		std::shared_ptr<const Material> hitMaterial;
+		RaycastInfo info = m_scene->intersect(curRay, hitMaterial);
+
+		if(hitMaterial == nullptr)
+		{
+			if(i == 0)
+				color = info.missInfo.skyColor;
+			else
+				color = color * info.missInfo.skyEmission;
+			
+			break;
+		}
+		else
+		{
+			std::shared_ptr<const BRDF> brdf = hitMaterial->get_brdf();
+			vec3 bounceDir = random_dir_hemisphere(info.hitInfo.worldNormal);
+			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
+
+			float pdf;
+			color = color * brdf->f(info.hitInfo, curRay.direction(), bounceDir, pdf);
+			curRay = Ray(bouncePos, bounceDir);
+		}
+
+		if(dot(color, color) <= RURT_EPSILON * RURT_EPSILON) //break if color is near black
+			break;
+	}
+
+	return color;
+}
+
+Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
+{
+	vec2 pixelCenter = vec2((float)x, (float)y) + vec2(0.5f);
+	vec2 pixelUV = pixelCenter / vec2((float)m_imageW, (float)m_imageH);
+	vec2 pixelD = pixelUV * 2.0f - vec2(1.0f);
+
+	vec4 rayOrig = m_camInvView * vec4(0.0f, 0.0f, 0.0f, 1.0f);
+	vec4 rayTarget = m_camInvProj * vec4(pixelD.x, pixelD.y, 1.0f, 1.0f);
+	vec4 rayDir = m_camInvView * vec4(normalize(rayTarget.xyz()), 0.0f);
+
+	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
+}
+
+vec3 Renderer::random_dir_hemisphere(vec3 normal)
+{
+	vec3 randUnitSphere;
+	while(true)
+	{
+		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+
+		float lenSqr = dot(randUnitSphere, randUnitSphere);
+		if(lenSqr > RURT_EPSILON && lenSqr <= 1.0f)
+		{
+			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
+			break;
+		}
+	}
+
+	if(dot(randUnitSphere, normal) > 0.0f)
+		return randUnitSphere;
+	else
+		return -1.0f * randUnitSphere;
 }
 
 }; //namespace rurt

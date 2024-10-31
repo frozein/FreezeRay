@@ -8,7 +8,7 @@
 #ifndef RURT_BRDF_H
 #define RURT_BRDF_H
 
-#include "intersection_info.hpp"
+#include "raycast_info.hpp"
 
 #include "quickmath.hpp"
 using namespace qm;
@@ -23,8 +23,8 @@ class BRDF
 public:
 	BRDF() = default;
 
-	virtual vec3 f(const IntersectionInfo& info, const vec3& i, const vec3& o, float& pdf) const = 0;
-	virtual float pdf(const IntersectionInfo& info, const vec3& i, const vec3& o) const = 0;
+	virtual vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const = 0;
+	virtual float pdf(const HitInfo& info, const vec3& i, const vec3& o) const = 0;
 };
 
 } //namespace rurt

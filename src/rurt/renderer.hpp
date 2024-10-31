@@ -22,7 +22,7 @@ namespace rurt
 class Renderer
 {
 public:
-	Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH);
+	Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH, uint32_t spp);
 	~Renderer();
 
 	void draw_scanline(uint32_t y, uint32_t* buf);
@@ -36,6 +36,12 @@ private:
 
 	uint32_t m_imageW;
 	uint32_t m_imageH;
+	uint32_t m_spp;
+
+	vec3 trace_path(const Ray& cameraRay);
+
+	Ray get_camera_ray(uint32_t x, uint32_t y) const;
+	static vec3 random_dir_hemisphere(vec3 normal);
 };
 
 }; //namespace rurt

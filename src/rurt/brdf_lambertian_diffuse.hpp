@@ -18,8 +18,8 @@ class BRDFLambertianDiffuse : public BRDF
 public:
 	BRDFLambertianDiffuse(vec3 color);
 
-	vec3 f(const IntersectionInfo& info, const vec3& i, const vec3& o, float& pdf) const override;
-	float pdf(const IntersectionInfo& info, const vec3& i, const vec3& o) const override;
+	vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const override;
+	float pdf(const HitInfo& info, const vec3& i, const vec3& o) const override;
 
 	const vec3& get_color() const;
 

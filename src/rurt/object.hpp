@@ -20,7 +20,7 @@ class Object
 public:
 	Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std::vector<std::shared_ptr<const Material>>& materials);
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal) const;
+	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, std::shared_ptr<const Material>& material) const;
 
 private:
 	std::vector<std::pair<std::shared_ptr<const Mesh>, std::shared_ptr<const Material>>> m_meshes;

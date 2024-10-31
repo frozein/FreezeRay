@@ -1,6 +1,8 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 #include "rurt/renderer.hpp"
+#include "rurt/material_single_brdf.hpp"
+#include "rurt/brdf_lambertian_diffuse.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -41,18 +43,21 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_cube();
+	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0)));
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0, 0.0, 0.0)));
+
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
-	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {};
+	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};
 	std::shared_ptr<const rurt::Object> object1 = std::make_shared<rurt::Object>(meshList1, materialList1);
-	mat4 objectTransform1 = translate(vec3(1.0f, 0.5f, 0.0f)) * rotate(vec3(45.0f, 0.0f, 0.0f)) * scale(vec3(1.5f, 1.0f, 1.0f));
+	mat4 objectTransform1 = translate(vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(10.0f, 1.0f, 10.0f));
 	
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList2 = {mesh2};
-	std::vector<std::shared_ptr<const rurt::Material>> materialList2 = {};
+	std::vector<std::shared_ptr<const rurt::Material>> materialList2 = {material2};
 	std::shared_ptr<const rurt::Object> object2 = std::make_shared<rurt::Object>(meshList2, materialList2);
-	mat4 objectTransform2 = translate(vec3(-1.0f, -0.3f, 0.0f)) * rotate(vec3(0.0f, 45.0f, 0.0f)) * scale(vec3(1.0f, 1.3f, 1.1f));
+	mat4 objectTransform2 = mat4_identity();
 
 	std::vector<std::pair<std::shared_ptr<const rurt::Object>, mat4>> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
@@ -67,7 +72,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 1);
 
 	//draw loop until rendering finished:
 	//---------------

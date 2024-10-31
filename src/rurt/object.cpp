@@ -29,7 +29,7 @@ Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std
 	}
 }
 
-bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
+bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, std::shared_ptr<const Material>& material) const
 {
 	//loop over every mesh, check for intersection:
 	//---------------
@@ -47,6 +47,7 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) cons
 			minT = t;
 			uv = newUV;
 			normal = newNormal;
+			material = m_meshes[i].second;
 		}
 	}
 

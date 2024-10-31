@@ -23,15 +23,17 @@ class Scene
 public:
 	Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& objects);
 
-	vec3 intersect(const Ray& ray) const;
+	RaycastInfo intersect(const Ray& ray, std::shared_ptr<const Material>& hitMaterial) const;
 
 private:
 	vec3 sky_color(const Ray& ray) const;
+	vec3 sky_emission(const Ray& ray) const;
 
 	struct ObjectRef
 	{
 		std::shared_ptr<const Object> object;
 		mat4 transform;
+		mat4 transformNoTranslate;
 		mat4 invTransform;
 		mat4 invTransformNoTranslate;
 	};
