@@ -13,18 +13,13 @@ BRDFLambertianDiffuse::BRDFLambertianDiffuse(vec3 color)
 	m_color.b = std::powf(color.b, RURT_GAMMA);
 }
 
-vec3 BRDFLambertianDiffuse::f(const HitInfo& info, const vec3& i, const vec3& o, float& pdfVal, bool cosineWeight) const
+vec3 BRDFLambertianDiffuse::f(const HitInfo& info, const vec3& i, const vec3& o, float& pdfVal) const
 {
 	pdfVal = pdf(info, i, o);
-	vec3 f = m_color * RURT_INV_PI;
-
-	if(cosineWeight)
-		f = f * std::max(dot(info.worldNormal, o), 0.0f);
-
-	return f;
+	return m_color * RURT_INV_PI;;
 }
 
-float BRDFLambertianDiffuse::pdf(const HitInfo& info, const vec3& i, const vec3& o, bool cosineWeight) const
+float BRDFLambertianDiffuse::pdf(const HitInfo& info, const vec3& i, const vec3& o) const
 {
 	return RURT_INV_2_PI;
 }
