@@ -23,8 +23,8 @@ class BRDF
 public:
 	BRDF() = default;
 
-	virtual vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const = 0;
-	virtual float pdf(const HitInfo& info, const vec3& i, const vec3& o) const = 0;
+	virtual vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf, bool cosineWeight = false) const = 0;
+	virtual float pdf(const HitInfo& info, const vec3& i, const vec3& o, bool cosineWeight = false) const = 0;
 };
 
 } //namespace rurt

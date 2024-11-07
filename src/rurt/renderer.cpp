@@ -89,13 +89,22 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
 
 			float pdf;
-			color = color * brdf->f(info.hitInfo, curRay.direction(), bounceDir, pdf);
+			color = color * brdf->f(info.hitInfo, curRay.direction(), bounceDir, pdf, true);
+			color = color / pdf;
+
 			curRay = Ray(bouncePos, bounceDir);
 		}
 
-		if(dot(color, color) <= RURT_EPSILON * RURT_EPSILON) //break if color is near black
+		//russian roulette to exit based on color:
+		float maxComp = std::max(std::max(color.r, color.g), color.b);
+		float roulette = (float)rand() / RAND_MAX;
+		if(roulette > maxComp)
 			break;
 	}
+
+	color.r = std::powf(color.r, RURT_INV_GAMMA);
+	color.g = std::powf(color.g, RURT_INV_GAMMA);
+	color.b = std::powf(color.b, RURT_INV_GAMMA);
 
 	return color;
 }

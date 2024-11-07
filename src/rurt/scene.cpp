@@ -109,9 +109,8 @@ vec3 Scene::sky_color(const Ray& ray) const
 vec3 Scene::sky_emission(const Ray& ray) const
 {
 	//temp implementation
-
-	float skyPos = ray.direction().y * 0.5f + 0.5f;
-	return vec3(2.0f);
+	
+	return vec3(std::max(ray.direction().y, 0.0f));
 }
 
 }; //namespace rurt
