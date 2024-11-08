@@ -13,7 +13,7 @@ find_package(SDL2 REQUIRED)
 find_library(LIBSDL2     SDL2)
 find_library(LIBSDL2MAIN SDL2main)
 target_link_libraries(${PROJECT_NAME} ${LIBSDL2} ${LIBSDL2MAIN})
-include_directories("src/" ${SDL2_INCLUDE_DIRS})
+include_directories("include/" ${SDL2_INCLUDE_DIRS})
 
 # set working directory:
 if(WIN32)

@@ -2,7 +2,7 @@
 #include <iostream>
 #include "rurt/renderer.hpp"
 #include "rurt/material_single_brdf.hpp"
-#include "rurt/brdf_lambertian_diffuse.hpp"
+#include "rurt/brdf/brdf_lambertian_diffuse.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080

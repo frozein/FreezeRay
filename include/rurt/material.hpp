@@ -10,7 +10,7 @@
 
 #include <string>
 #include <memory>
-#include "brdf.hpp"
+#include "brdf/brdf.hpp"
 
 //-------------------------------------------//
 

@@ -1,7 +1,7 @@
-#include "renderer.hpp"
+#include "rurt/renderer.hpp"
 
-#include "ray.hpp"
-#include "constants.hpp"
+#include "rurt/ray.hpp"
+#include "rurt/constants.hpp"
 
 #define RURT_RAY_BOUNCE_LIMIT 50
 

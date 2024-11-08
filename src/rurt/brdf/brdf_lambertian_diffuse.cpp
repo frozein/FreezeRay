@@ -1,5 +1,5 @@
-#include "brdf_lambertian_diffuse.hpp"
-#include "constants.hpp"
+#include "rurt/brdf/brdf_lambertian_diffuse.hpp"
+#include "rurt/constants.hpp"
 
 //-------------------------------------------//
 

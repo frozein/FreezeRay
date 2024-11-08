@@ -8,9 +8,9 @@
 #ifndef RURT_BRDF_H
 #define RURT_BRDF_H
 
-#include "raycast_info.hpp"
+#include "../raycast_info.hpp"
 
-#include "quickmath.hpp"
+#include "../quickmath.hpp"
 using namespace qm;
 
 //-------------------------------------------//

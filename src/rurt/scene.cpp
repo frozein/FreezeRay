@@ -1,5 +1,5 @@
-#include "scene.hpp"
-#include "constants.hpp"
+#include "rurt/scene.hpp"
+#include "rurt/constants.hpp"
 
 //-------------------------------------------//
 

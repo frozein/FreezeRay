@@ -1,9 +1,9 @@
-#include "mesh.hpp"
+#include "rurt/mesh.hpp"
 
 #define QOBJ_IMPLEMENTATION
-#include "quickobj.h"
+#include "rurt/quickobj.h"
 
-#include "constants.hpp"
+#include "rurt/constants.hpp"
 
 #define CULL_BACKFACE 1
 #define EPSILON 0.0001f

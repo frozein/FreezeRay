@@ -1,4 +1,4 @@
-#include "camera.hpp"
+#include "rurt/camera.hpp"
 
 //-------------------------------------------//
 
