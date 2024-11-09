@@ -15,6 +15,10 @@ using namespace qm;
 
 //-------------------------------------------//
 
+#define RURT_BRDF_UP_DIR vec3(0.0f, 1.0f, 0.0f)
+
+//-------------------------------------------//
+
 namespace rurt
 {
 
@@ -23,6 +27,7 @@ class BRDF
 public:
 	BRDF() = default;
 
+	//i and o are relative to RURT_BRDF_UP_DIR
 	virtual vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const = 0;
 	virtual float pdf(const HitInfo& info, const vec3& i, const vec3& o) const = 0;
 };

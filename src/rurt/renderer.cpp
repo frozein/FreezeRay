@@ -10,15 +10,18 @@
 namespace rurt
 {
 
+//-------------------------------------------//
+
 Renderer::Renderer(std::shared_ptr<const Scene> scene, std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH, uint32_t spp) : 
 	m_scene(scene),
-	m_cam(cam), 
+	m_cam(cam),
+	m_camInvView(inverse(m_cam->view())),
+	m_camInvProj(inverse(m_cam->proj())),
 	m_imageW(imageW), 
 	m_imageH(imageH),
 	m_spp(spp)
 {
-	m_camInvView = inverse(m_cam->view());
-	m_camInvProj = inverse(m_cam->proj());
+
 }
 
 Renderer::~Renderer()
@@ -67,6 +70,9 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 {
 	vec3 color = vec3(1.0f);
 
+	static int count = 0;
+	count++;
+
 	Ray curRay = cameraRay;
 	for(uint32_t i = 0; i < RURT_RAY_BOUNCE_LIMIT; i++)
 	{
@@ -84,16 +90,26 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 		}
 		else
 		{
+			//get brdf
 			std::shared_ptr<const BRDF> brdf = hitMaterial->get_brdf();
+
+			//generate bounce direction and position
 			vec3 bounceDir = random_dir_hemisphere(info.hitInfo.worldNormal);
 			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
 
-			float cosTheta = std::max(dot(info.hitInfo.worldNormal, bounceDir), 0.0f);
+			//evaluate brdf
+			mat3 toUp = transform_between(info.hitInfo.worldNormal, RURT_BRDF_UP_DIR);
+			vec3 wi = toUp * bounceDir;
+			vec3 wo = -1.0f * (toUp * curRay.direction());
 
 			float pdf;
-			color = color * brdf->f(info.hitInfo, bounceDir, curRay.direction(), pdf);
-			color = color / pdf * cosTheta;
+			vec3 f =  brdf->f(info.hitInfo, wi, wo, pdf);
 
+			//apply to current color
+			float cosTheta = std::max(wi.y, 0.0f);
+			color = ((color * f) / pdf) * cosTheta;
+
+			//set new ray
 			curRay = Ray(bouncePos, bounceDir);
 		}
 
@@ -128,7 +144,7 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
 }
 
-vec3 Renderer::random_dir_hemisphere(vec3 normal)
+vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 {
 	vec3 randUnitSphere;
 	while(true)
@@ -149,6 +165,48 @@ vec3 Renderer::random_dir_hemisphere(vec3 normal)
 		return randUnitSphere;
 	else
 		return -1.0f * randUnitSphere;
+}
+
+mat3 Renderer::transform_between(const vec3& from, const vec3& to) 
+{
+	//equal
+	if(dot(from, to) >=  1.0f - RURT_EPSILON)
+		return mat3_identity();
+
+	//opposite
+	if(dot(from, to) <= -1.0f + RURT_EPSILON)
+	{
+		mat3 mat = mat3();
+		mat[0][0] = -1.0f;
+		mat[1][1] = -1.0f;
+		mat[2][2] = 1.0f;
+	}
+
+    vec3 v = cross(from, to);
+    float c = dot(from, to);
+    float k = 1.0f / (1.0f + c);
+    
+    mat3 rotation;
+
+    rotation.v[0] = vec3(
+        v.x * v.x * k + c,
+        v.y * v.x * k + v.z,
+        v.z * v.x * k - v.y
+    );
+    
+    rotation.v[1] = vec3(
+        v.x * v.y * k - v.z,
+        v.y * v.y * k + c,
+        v.z * v.y * k + v.x
+    );
+    
+    rotation.v[2] = vec3(
+        v.x * v.z * k + v.y,
+        v.y * v.z * k - v.x,
+        v.z * v.z * k + c
+    );
+    
+    return rotation;
 }
 
 }; //namespace rurt
