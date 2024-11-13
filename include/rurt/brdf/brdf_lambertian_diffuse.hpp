@@ -1,4 +1,4 @@
-/* brdf_disney_diffuse.hpp
+/* brdf_lambertian_diffuse.hpp
  *
  * contains a definition for a lambertian diffuse BRDF model
  */
@@ -16,7 +16,7 @@ namespace rurt
 class BRDFLambertianDiffuse : public BRDF
 {
 public:
-	BRDFLambertianDiffuse(vec3 color);
+	BRDFLambertianDiffuse(const vec3& color);
 
 	vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const override;
 	float pdf(const HitInfo& info, const vec3& i, const vec3& o) const override;

@@ -6,7 +6,7 @@
 namespace rurt
 {
 
-BRDFLambertianDiffuse::BRDFLambertianDiffuse(vec3 color)
+BRDFLambertianDiffuse::BRDFLambertianDiffuse(const vec3& color)
 {
 	m_color.r = std::powf(color.r, RURT_GAMMA);
 	m_color.g = std::powf(color.g, RURT_GAMMA);

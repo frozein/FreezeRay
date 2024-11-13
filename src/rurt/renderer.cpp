@@ -98,12 +98,15 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
 
 			//evaluate brdf
-			mat3 toUp = transform_between(info.hitInfo.worldNormal, RURT_BRDF_UP_DIR);
+			mat3 toUp = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);
 			vec3 wi = toUp * bounceDir;
 			vec3 wo = -1.0f * (toUp * curRay.direction());
 
 			float pdf;
 			vec3 f =  brdf->f(info.hitInfo, wi, wo, pdf);
+
+			if(pdf == 0.0f)
+				break;
 
 			//apply to current color
 			float cosTheta = std::max(wi.y, 0.0f);
