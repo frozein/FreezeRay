@@ -1,5 +1,5 @@
 #include "rurt/brdf/brdf_lambertian_diffuse.hpp"
-#include "rurt/constants.hpp"
+#include "rurt/globals.hpp"
 
 //-------------------------------------------//
 

@@ -1,5 +1,5 @@
 #include "rurt/brdf/brdf_microfacet.hpp"
-#include "rurt/constants.hpp"
+#include "rurt/globals.hpp"
 
 //-------------------------------------------//
 

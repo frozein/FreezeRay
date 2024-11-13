@@ -1,5 +1,5 @@
-#include "rurt/brdf/microfacet_distribution/microfacet_distribution_beckmann.hpp"
-#include "rurt/constants.hpp"
+#include "rurt/microfacet_distribution/microfacet_distribution_beckmann.hpp"
+#include "rurt/globals.hpp"
 
 //-------------------------------------------//
 

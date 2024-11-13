@@ -7,7 +7,7 @@
 #define RURT_BRDF_MICROFACET_H
 
 #include "brdf.hpp"
-#include "microfacet_distribution/microfacet_distribution.hpp"
+#include "../microfacet_distribution/microfacet_distribution.hpp"
 
 //-------------------------------------------//
 

@@ -3,7 +3,7 @@
 #define QOBJ_IMPLEMENTATION
 #include "rurt/quickobj.h"
 
-#include "rurt/constants.hpp"
+#include "rurt/globals.hpp"
 
 #define CULL_BACKFACE 1
 #define EPSILON 0.0001f

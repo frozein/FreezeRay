@@ -4,7 +4,7 @@
 #include "rurt/material_single_brdf.hpp"
 #include "rurt/brdf/brdf_lambertian_diffuse.hpp"
 #include "rurt/brdf/brdf_microfacet.hpp"
-#include "rurt/brdf/microfacet_distribution/microfacet_distribution_beckmann.hpp"
+#include "rurt/microfacet_distribution/microfacet_distribution_beckmann.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080

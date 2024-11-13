@@ -1,10 +1,15 @@
-/* constants.hpp
+/* globals.hpp
  *
- * contains definitions for various frequently used constants, such as pi
+ * contains definitions for various frequently used constants and functions, such as pi
  */
 
-#ifndef RURT_CONSTANTS_H
-#define RURT_CONSTANTS_H
+#ifndef RURT_GLOBALS_H
+#define RURT_GLOBALS_H
+
+#include "quickmath.hpp"
+using namespace qm;
+
+//-------------------------------------------//
 
 #define RURT_EPSILON 0.001f
 
@@ -92,4 +97,4 @@ inline bool same_hemisphere(const vec3& w1, const vec3& w2)
 
 }; //namespace rurt
 
-#endif //#ifndef RURT_CONSTANTS_H
+#endif //#ifndef RURT_GLOBALS_H

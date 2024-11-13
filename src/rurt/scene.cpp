@@ -1,5 +1,5 @@
 #include "rurt/scene.hpp"
-#include "rurt/constants.hpp"
+#include "rurt/globals.hpp"
 
 //-------------------------------------------//
 
