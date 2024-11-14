@@ -102,15 +102,13 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 			vec3 wi = toUp * bounceDir;
 			vec3 wo = -1.0f * (toUp * curRay.direction());
 
-			float pdf;
-			vec3 f =  brdf->f(info.hitInfo, wi, wo, pdf);
-
-			if(pdf == 0.0f)
-				break;
+			vec3 f =  brdf->f(info.hitInfo, wi, wo);
 
 			//apply to current color
-			float cosTheta = std::max(wi.y, 0.0f);
-			color = ((color * f) / pdf) * cosTheta;
+			float cosTheta = std::max(cos_theta(wi), 0.0f);
+			float pdf = RURT_INV_2_PI; //uniform hemisphere sampling, 1/2pi pdf
+
+			color = color * (f * cosTheta / pdf);
 
 			//set new ray
 			curRay = Ray(bouncePos, bounceDir);

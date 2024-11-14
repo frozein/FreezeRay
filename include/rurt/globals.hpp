@@ -72,7 +72,7 @@ inline float cos_phi(const vec3& w)
 inline float sin_phi(const vec3& w)
 {
 	float sinTheta = sin_theta(w);
-	return (sinTheta == 0.0f) ? 1.0f : std::min(std::max(w.z / sinTheta, -1.0f), 1.0f);
+	return (sinTheta == 0.0f) ? 0.0f : std::min(std::max(w.z / sinTheta, -1.0f), 1.0f);
 }
 
 inline float cos_phi2(const vec3& w)

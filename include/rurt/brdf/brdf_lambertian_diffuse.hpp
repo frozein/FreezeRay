@@ -18,8 +18,8 @@ class BRDFLambertianDiffuse : public BRDF
 public:
 	BRDFLambertianDiffuse(const vec3& color);
 
-	vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const override;
-	float pdf(const HitInfo& info, const vec3& i, const vec3& o) const override;
+	vec3 f(const HitInfo& info, const vec3& wi, const vec3& wo) const override;
+	float pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const override;
 
 private:
 	vec3 m_color;

@@ -23,9 +23,9 @@ class BRDF
 public:
 	BRDF() = default;
 
-	// i and o are relative to RURT_BRDF_UP_DIR
-	virtual vec3 f(const HitInfo& info, const vec3& i, const vec3& o, float& pdf) const = 0;
-	virtual float pdf(const HitInfo& info, const vec3& i, const vec3& o) const = 0;
+	// wi and wo are relative to RURT_BRDF_UP_DIR
+	virtual vec3 f(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
+	virtual float pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
 };
 
 } //namespace rurt
