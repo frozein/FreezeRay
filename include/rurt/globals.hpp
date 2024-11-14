@@ -93,7 +93,23 @@ inline bool same_hemisphere(const vec3& w1, const vec3& w2)
 //COLOR HELPERS:
 //-------------------------------------------//
 
-//TODO
+inline vec3 srgb_to_linear(const vec3& color)
+{
+	return vec3(
+		std::powf(color.r, RURT_GAMMA),
+		std::powf(color.g, RURT_GAMMA),
+		std::powf(color.b, RURT_GAMMA)
+	);
+}
+
+inline vec3 linear_to_srgb(const vec3& color)
+{
+	return vec3(
+		std::powf(color.r, RURT_INV_GAMMA),
+		std::powf(color.g, RURT_INV_GAMMA),
+		std::powf(color.b, RURT_INV_GAMMA)
+	);
+}
 
 }; //namespace rurt
 

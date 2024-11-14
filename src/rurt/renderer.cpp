@@ -125,11 +125,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 	color.g = std::min(std::max(color.g, 0.0f), 1.0f);
 	color.b = std::min(std::max(color.b, 0.0f), 1.0f);
 
-	color.r = std::powf(color.r, RURT_INV_GAMMA);
-	color.g = std::powf(color.g, RURT_INV_GAMMA);
-	color.b = std::powf(color.b, RURT_INV_GAMMA);
-
-	return color;
+	return linear_to_srgb(color);
 }
 
 Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const

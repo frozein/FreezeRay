@@ -7,9 +7,13 @@ namespace rurt
 {
 
 MicrofacetDistributionTrowbridgeReitz::MicrofacetDistributionTrowbridgeReitz(float roughnessX, float roughnessY) :
-	m_alphaX(roughness_to_alpha(roughnessX)), m_alphaY(roughness_to_alpha(roughnessY))
+	m_alphaX(1.0f), m_alphaY(1.0f)
 {
+	if(roughnessX < 0.0f || roughnessX > 1.0f || roughnessY < 0.0f || roughnessY > 1.0f)
+		throw std::invalid_argument("roughness values must be in the range [0.0, 1.0]");
 
+	m_alphaX = roughness_to_alpha(roughnessX);
+	m_alphaY = roughness_to_alpha(roughnessY);
 }
 
 float MicrofacetDistributionTrowbridgeReitz::distribution(const vec3& w) const
@@ -37,9 +41,7 @@ float MicrofacetDistributionTrowbridgeReitz::invisible_masked_proportion(const v
 
 float MicrofacetDistributionTrowbridgeReitz::roughness_to_alpha(float roughness)
 {	
-	roughness = std::max(roughness, RURT_EPSILON);
-	float x = std::log(roughness);
-	return 1.62142f + 0.819955f * x + 0.1734f * x * x + 0.0171201f * x * x * x + 0.000640711f * x * x * x * x;
+	return roughness * roughness;
 }
 
 }; //namespace rurt

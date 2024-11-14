@@ -49,9 +49,9 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0f)));
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0f, 0.0f, 0.0f)));
 	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBRDF>(
-		"", std::make_shared<rurt::BRDFMicrofacet>(vec3(1.0f, 0.0f, 0.0f), std::make_shared<rurt::MicrofacetDistributionTrowbridgeReitz>(0.1f, 0.1f))
+		"", std::make_shared<rurt::BRDFMicrofacet>(vec3(1.0f), std::make_shared<rurt::MicrofacetDistributionTrowbridgeReitz>(0.5f, 0.5f))
 	);
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
