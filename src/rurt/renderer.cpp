@@ -93,24 +93,39 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 			//get brdf
 			std::shared_ptr<const BRDF> brdf = hitMaterial->get_brdf();
 
-			//generate bounce direction and position
-			vec3 bounceDir = random_dir_hemisphere(info.hitInfo.worldNormal);
-			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
+			//transform current ray direction to local space:
+			mat3 toLocal = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);
+			mat3 toWorld = transform_between(RURT_UP_DIR, info.hitInfo.worldNormal);
 
-			//evaluate brdf
-			mat3 toUp = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);
-			vec3 wi = toUp * bounceDir;
-			vec3 wo = -1.0f * (toUp * curRay.direction());
+			//TODO: figure out an actual solution!!!!
+			vec3 wo = -1.0f * (toLocal * curRay.direction());
+			if(cos_theta(wo) < RURT_EPSILON)
+				wo = normalize(vec3(wo.x, RURT_EPSILON, wo.z));
 
-			vec3 f =  brdf->f(info.hitInfo, wi, wo);
+			//evaluate brdf:
+			vec3 f;
+			float pdf;
+			vec3 wi;
 
-			//apply to current color
+			if(brdf->is_delta())
+			{
+				f = brdf->sample_f(info.hitInfo, wi, wo, pdf);
+			}
+			else
+			{
+				wi = random_dir_hemisphere();
+				f = brdf->f(info.hitInfo, wi, wo);
+				pdf = RURT_INV_2_PI;
+			}
+
+			//apply brdf to current color
 			float cosTheta = std::max(cos_theta(wi), 0.0f);
-			float pdf = RURT_INV_2_PI; //uniform hemisphere sampling, 1/2pi pdf
-
 			color = color * (f * cosTheta / pdf);
 
 			//set new ray
+			vec3 bounceDir = toWorld * wi;
+			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
+
 			curRay = Ray(bouncePos, bounceDir);
 		}
 
@@ -141,13 +156,13 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
 }
 
-vec3 Renderer::random_dir_hemisphere(const vec3& normal)
+vec3 Renderer::random_dir_hemisphere()
 {
 	vec3 randUnitSphere;
 	while(true)
 	{
 		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		randUnitSphere.y = ((float)rand() / (float)RAND_MAX);
 		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
 
 		float lenSqr = dot(randUnitSphere, randUnitSphere);
@@ -158,10 +173,7 @@ vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 		}
 	}
 
-	if(dot(randUnitSphere, normal) > 0.0f)
-		return randUnitSphere;
-	else
-		return -1.0f * randUnitSphere;
+	return randUnitSphere;
 }
 
 mat3 Renderer::transform_between(const vec3& from, const vec3& to) 

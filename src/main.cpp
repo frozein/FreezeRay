@@ -4,6 +4,7 @@
 #include "rurt/material_single_brdf.hpp"
 #include "rurt/brdf/brdf_lambertian_diffuse.hpp"
 #include "rurt/brdf/brdf_microfacet.hpp"
+#include "rurt/brdf/brdf_specular_reflection.hpp"
 #include "rurt/microfacet_distribution/microfacet_distribution_beckmann.hpp"
 #include "rurt/microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
 
@@ -50,9 +51,7 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
 	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0f, 0.0f, 0.0f)));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBRDF>(
-		"", std::make_shared<rurt::BRDFMicrofacet>(vec3(1.0f), std::make_shared<rurt::MicrofacetDistributionTrowbridgeReitz>(0.5f, 0.5f))
-	);
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBRDF>("", std::make_shared<rurt::BRDFSpecularReflection>(vec3(1.0f)));
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};
@@ -77,7 +76,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 100);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 10);
 
 	//draw loop until rendering finished:
 	//---------------

@@ -25,7 +25,10 @@ public:
 
 	// wi and wo are relative to RURT_BRDF_UP_DIR
 	virtual vec3 f(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
+	virtual vec3 sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdf) const = 0;
 	virtual float pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
+
+	virtual bool is_delta() const = 0;
 };
 
 } //namespace rurt

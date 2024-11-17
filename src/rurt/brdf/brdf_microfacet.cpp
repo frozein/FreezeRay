@@ -26,6 +26,15 @@ vec3 BRDFMicrofacet::f(const HitInfo& info, const vec3& wi, const vec3& wo) cons
 	return m_color * m_distribution->distribution(wh) * m_distribution->proportion_visible(wi, wo) / (4.0f * cosThetaI * cosThetaO);
 }
 
+vec3 BRDFMicrofacet::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdfVal) const
+{
+	//TODO
+
+	wi = RURT_UP_DIR;
+	pdfVal = 0.0f;
+	return vec3(0.0f);
+}
+
 float BRDFMicrofacet::pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const
 {
 	if(!same_hemisphere(wi, wo))
