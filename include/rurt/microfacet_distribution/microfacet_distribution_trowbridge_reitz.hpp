@@ -6,7 +6,7 @@
 #ifndef RURT_MICROFACET_DISTRIBUTION_TROWBRIDGE_REITZ_H
 #define RURT_MICROFACET_DISTRIBUTION_TROWBRIDGE_REITZ_H
 
-#include "microfacet_distribution.hpp"
+#include "../microfacet_distribution.hpp"
 
 //-------------------------------------------//
 

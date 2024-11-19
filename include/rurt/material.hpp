@@ -10,7 +10,7 @@
 
 #include <string>
 #include <memory>
-#include "brdf/brdf.hpp"
+#include "bxdf.hpp"
 
 //-------------------------------------------//
 
@@ -25,7 +25,7 @@ public:
 	const std::string& get_name() const { return m_name; };
 	void set_name(const std::string& name) { m_name = name; };
 
-	virtual std::shared_ptr<BRDF> get_brdf() const = 0;
+	virtual std::shared_ptr<BXDF> get_bxdf() const = 0;
 	virtual vec3 get_emission() const = 0;
 
 private:

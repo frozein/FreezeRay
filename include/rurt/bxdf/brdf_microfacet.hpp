@@ -6,16 +6,16 @@
 #ifndef RURT_BRDF_MICROFACET_H
 #define RURT_BRDF_MICROFACET_H
 
-#include "brdf.hpp"
-#include "../microfacet_distribution/microfacet_distribution.hpp"
-#include "../fresnel/fresnel.hpp"
+#include "../bxdf.hpp"
+#include "../microfacet_distribution.hpp"
+#include "../fresnel.hpp"
 
 //-------------------------------------------//
 
 namespace rurt
 {
 
-class BRDFMicrofacet : public BRDF
+class BRDFMicrofacet : public BXDF
 {
 public:
 	BRDFMicrofacet(const vec3& color, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel);

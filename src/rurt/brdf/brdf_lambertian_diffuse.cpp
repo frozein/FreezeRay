@@ -1,4 +1,4 @@
-#include "rurt/brdf/brdf_lambertian_diffuse.hpp"
+#include "rurt/bxdf/brdf_lambertian_diffuse.hpp"
 #include "rurt/globals.hpp"
 
 //-------------------------------------------//

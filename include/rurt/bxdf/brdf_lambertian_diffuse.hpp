@@ -6,14 +6,14 @@
 #ifndef RURT_BRDF_LAMBERTIAN_DIFFUSE
 #define RURT_BRDF_LAMBERTIAN_DIFFUSE
 
-#include "brdf.hpp"
+#include "../bxdf.hpp"
 
 //-------------------------------------------//
 
 namespace rurt
 {
 
-class BRDFLambertianDiffuse : public BRDF
+class BRDFLambertianDiffuse : public BXDF
 {
 public:
 	BRDFLambertianDiffuse(const vec3& color);

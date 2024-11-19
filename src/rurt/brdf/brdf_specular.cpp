@@ -1,4 +1,4 @@
-#include "rurt/brdf/brdf_specular.hpp"
+#include "rurt/bxdf/brdf_specular.hpp"
 #include "rurt/globals.hpp"
 
 //-------------------------------------------//

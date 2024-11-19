@@ -7,7 +7,7 @@
 #ifndef RURT_MICROFACET_DISTRIBUTION_H
 #define RURT_MICROFACET_DISTRIBUTION_H
 
-#include "../quickmath.hpp"
+#include "quickmath.hpp"
 using namespace qm;
 
 //-------------------------------------------//

@@ -6,7 +6,7 @@
 #ifndef RURT_FRESNEL_DIELECTRIC
 #define RURT_FRESNEL_DIELECTRIC
 
-#include "fresnel.hpp"
+#include "../fresnel.hpp"
 
 //-------------------------------------------//
 

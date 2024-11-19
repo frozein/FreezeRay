@@ -91,7 +91,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 		else
 		{
 			//get brdf
-			std::shared_ptr<const BRDF> brdf = hitMaterial->get_brdf();
+			std::shared_ptr<const BXDF> brdf = hitMaterial->get_bxdf();
 
 			//transform current ray direction to local space:
 			mat3 toLocal = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);

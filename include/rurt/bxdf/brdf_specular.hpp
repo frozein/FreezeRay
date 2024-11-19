@@ -6,15 +6,15 @@
 #ifndef RURT_BRDF_SPECULAR_H
 #define RURT_BRDF_SPECULAR_H
 
-#include "brdf.hpp"
-#include "../fresnel/fresnel.hpp"
+#include "../bxdf.hpp"
+#include "../fresnel.hpp"
 
 //-------------------------------------------//
 
 namespace rurt
 {
 
-class BRDFSpecular : public BRDF
+class BRDFSpecular : public BXDF
 {
 public:
 	BRDFSpecular(const vec3& color, std::shared_ptr<const Fresnel> fresnel);

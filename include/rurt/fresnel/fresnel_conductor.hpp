@@ -6,7 +6,7 @@
 #ifndef RURT_FRESNEL_CONDUCTOR_H
 #define RURT_FRESNEL_CONDUCTOR_H
 
-#include "fresnel.hpp"
+#include "../fresnel.hpp"
 
 //-------------------------------------------//
 

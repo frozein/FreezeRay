@@ -6,7 +6,7 @@
 #ifndef RURT_MICROFACET_DISTRIBUTION_BECKMANN_H
 #define RURT_MICROFACET_DISTRIBUTION_BECKMANN_H
 
-#include "microfacet_distribution.hpp"
+#include "../microfacet_distribution.hpp"
 
 //-------------------------------------------//
 
