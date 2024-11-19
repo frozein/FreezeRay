@@ -18,10 +18,16 @@ using namespace qm;
 namespace rurt
 {
 
+enum class BXDFType : uint32_t
+{
+	REFLECTION = 0,
+	TRANSMISSION
+};
+
 class BXDF
 {
 public:
-	BXDF() = default;
+	BXDF(BXDFType type) : m_type(type) {};
 
 	// wi and wo are relative to RURT_BRDF_UP_DIR
 	virtual vec3 f(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
@@ -29,6 +35,11 @@ public:
 	virtual float pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const = 0;
 
 	virtual bool is_delta() const = 0;
+
+	BXDFType type() const { return m_type; }
+
+private:
+	BXDFType m_type;
 };
 
 } //namespace rurt

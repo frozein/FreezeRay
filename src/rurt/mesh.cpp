@@ -5,9 +5,6 @@
 
 #include "rurt/globals.hpp"
 
-#define CULL_BACKFACE 1
-#define EPSILON 0.0001f
-
 //-------------------------------------------//
 
 namespace rurt
@@ -221,24 +218,12 @@ std::shared_ptr<const Mesh> Mesh::unit_square()
 
 bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const
 {
-	//TODO: allow specification of handedness and winding order
-
 	vec3 v0v1 = v1 - v0;
 	vec3 v0v2 = v2 - v0;
 	vec3 pvec = cross(ray.direction(), v0v2);
 	float det = dot(v0v1, pvec);
-
-#if CULL_BACKFACE
-	{
-		if(det < EPSILON)
-			return false;
-	}
-#else
-	{
-		if(abs(det) < EPSILON)
-			return false;
-	}
-#endif
+	if(abs(det) < RURT_EPSILON)
+		return false;
 
 	float invDet = 1.0f / det;
 

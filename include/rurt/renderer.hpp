@@ -41,7 +41,7 @@ private:
 	vec3 trace_path(const Ray& cameraRay);
 
 	Ray get_camera_ray(uint32_t x, uint32_t y) const;
-	static vec3 random_dir_hemisphere();
+	static vec3 random_dir_hemisphere(const vec3& normal);
 	static mat3 transform_between(const vec3& from, const vec3& to);
 };
 

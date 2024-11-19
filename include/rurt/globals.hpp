@@ -24,6 +24,7 @@ using namespace qm;
 
 //canonical up direction for local space calculations
 #define RURT_UP_DIR vec3(0.0f, 1.0f, 0.0f)
+#define RURT_DOWN_DIR vec3(0.0f, -1.0f, 0.0f)
 
 //-------------------------------------------//
 

@@ -7,7 +7,7 @@ namespace rurt
 {
 
 BRDFLambertianDiffuse::BRDFLambertianDiffuse(const vec3& color) :
-	m_color(srgb_to_linear(color))
+	BXDF(BXDFType::REFLECTION), m_color(srgb_to_linear(color))
 {
 
 }

@@ -7,7 +7,7 @@ namespace rurt
 {
 
 BRDFMicrofacet::BRDFMicrofacet(const vec3& color, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel) :
-	m_color(srgb_to_linear(color)), m_distribution(distribution), m_fresnel(fresnel)
+	BXDF(BXDFType::REFLECTION), m_color(srgb_to_linear(color)), m_distribution(distribution), m_fresnel(fresnel)
 {
 
 }
@@ -26,7 +26,7 @@ vec3 BRDFMicrofacet::f(const HitInfo& info, const vec3& wi, const vec3& wo) cons
 	return m_color * 
 	       m_distribution->distribution(wh) * 
 		   m_distribution->proportion_visible(wi, wo) *
-		   m_fresnel->evaluate(cosThetaI) / 
+		   m_fresnel->evaluate(dot(wi, wh)) / 
 		   (4.0f * cosThetaI * cosThetaO);
 }
 

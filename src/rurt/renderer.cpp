@@ -53,6 +53,7 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 		color.r = std::max(std::min(color.r, 1.0f), 0.0f);
 		color.g = std::max(std::min(color.g, 1.0f), 0.0f);
 		color.b = std::max(std::min(color.b, 1.0f), 0.0f);
+		color = linear_to_srgb(color);
 
 		uint8_t r = (uint8_t)(color.r * 255.0f);
 		uint8_t g = (uint8_t)(color.g * 255.0f);
@@ -90,41 +91,48 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 		}
 		else
 		{
-			//get brdf
-			std::shared_ptr<const BXDF> brdf = hitMaterial->get_bxdf();
+			//get bxdf
+			std::shared_ptr<const BXDF> bxdf = hitMaterial->get_bxdf();
 
 			//transform current ray direction to local space:
 			mat3 toLocal = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);
 			mat3 toWorld = transform_between(RURT_UP_DIR, info.hitInfo.worldNormal);
 
-			//TODO: figure out an actual solution!!!!
 			vec3 wo = -1.0f * (toLocal * curRay.direction());
-			if(cos_theta(wo) < RURT_EPSILON)
-				wo = normalize(vec3(wo.x, RURT_EPSILON, wo.z));
 
-			//evaluate brdf:
+			//evaluate bxdf:
 			vec3 f;
 			float pdf;
 			vec3 wi;
 
-			if(brdf->is_delta())
+			if(bxdf->is_delta())
 			{
-				f = brdf->sample_f(info.hitInfo, wi, wo, pdf);
+				f = bxdf->sample_f(info.hitInfo, wi, wo, pdf);
 			}
 			else
 			{
-				wi = random_dir_hemisphere();
-				f = brdf->f(info.hitInfo, wi, wo);
+				if(bxdf->type() == BXDFType::REFLECTION)
+					wi = random_dir_hemisphere(RURT_UP_DIR);
+				else
+					wi = random_dir_hemisphere(RURT_DOWN_DIR);
+				
+				f = bxdf->f(info.hitInfo, wi, wo);
 				pdf = RURT_INV_2_PI;
 			}
 
 			//apply brdf to current color
-			float cosTheta = std::max(cos_theta(wi), 0.0f);
+			float cosTheta = std::abs(cos_theta(wi));
 			color = color * (f * cosTheta / pdf);
 
 			//set new ray
 			vec3 bounceDir = toWorld * wi;
-			vec3 bouncePos = info.hitInfo.worldPos + RURT_EPSILON * info.hitInfo.worldNormal;
+			vec3 bouncePos = info.hitInfo.worldPos;
+			
+			bool entering = cos_theta(wo) > 0.0f;
+			if(bxdf->type() == BXDFType::REFLECTION)
+				bouncePos = bouncePos + RURT_EPSILON * info.hitInfo.worldNormal;
+			else
+				bouncePos = bouncePos + (entering ? -RURT_EPSILON : RURT_EPSILON) * info.hitInfo.worldNormal;
 
 			curRay = Ray(bouncePos, bounceDir);
 		}
@@ -136,11 +144,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 			break;
 	}
 
-	color.r = std::min(std::max(color.r, 0.0f), 1.0f);
-	color.g = std::min(std::max(color.g, 0.0f), 1.0f);
-	color.b = std::min(std::max(color.b, 0.0f), 1.0f);
-
-	return linear_to_srgb(color);
+	return color;
 }
 
 Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
@@ -156,13 +160,13 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
 }
 
-vec3 Renderer::random_dir_hemisphere()
+vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 {
 	vec3 randUnitSphere;
 	while(true)
 	{
 		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.y = ((float)rand() / (float)RAND_MAX);
+		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
 		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
 
 		float lenSqr = dot(randUnitSphere, randUnitSphere);
@@ -172,6 +176,9 @@ vec3 Renderer::random_dir_hemisphere()
 			break;
 		}
 	}
+
+	if(dot(randUnitSphere, normal) < 0.0f)
+		randUnitSphere = randUnitSphere * -1.0f;
 
 	return randUnitSphere;
 }

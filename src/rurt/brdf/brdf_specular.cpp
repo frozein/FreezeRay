@@ -7,7 +7,7 @@ namespace rurt
 {
 
 BRDFSpecular::BRDFSpecular(const vec3& color, std::shared_ptr<const Fresnel> fresnel) :
-	m_color(srgb_to_linear(color)), m_fresnel(fresnel)
+	BXDF(BXDFType::REFLECTION), m_color(srgb_to_linear(color)), m_fresnel(fresnel)
 {
 
 }
