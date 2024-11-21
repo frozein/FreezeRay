@@ -13,8 +13,8 @@ MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<
 
 vec3 MaterialSingleBXDF::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
-	vec3 wi = world_to_local(hitInfo.worldNormal, wiWorld);
-	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+	vec3 wi, wo;
+	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
 	return m_color * m_bxdf->f(wi, wo);
 }
@@ -32,8 +32,8 @@ vec3 MaterialSingleBXDF::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, co
 
 float MaterialSingleBXDF::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
-	vec3 wi = world_to_local(wiWorld, hitInfo.worldNormal);
-	vec3 wo = world_to_local(woWorld, hitInfo.worldNormal);
+	vec3 wi, wo;
+	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
 	return m_bxdf->pdf(wi, wo);
 }

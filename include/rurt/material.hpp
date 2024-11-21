@@ -43,15 +43,9 @@ private:
 
 protected:
 	static vec3 world_to_local(const vec3& normal, const vec3& v);
+	static void world_to_local(const vec3& normal, const vec3& wiWorld, const vec3& woWorld, vec3& wi, vec3& wo);
 	static vec3 local_to_world(const vec3& normal, const vec3& v);
 	static mat3 transform_between(const vec3& from, const vec3& to);
-
-	template<typename... BXDFs>
-	static vec3 multi_bxdf_f(const vec3& normal, const vec3& wiWorld, const vec3& woWorld, const BXDFs&... bxdfs);
-	template<typename... BXDFs>
-	static vec3 multi_bxdf_sample_f(const vec3& normal, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf, const BXDFs&... bxdfs);
-	template<typename... BXDFs>
-	static float multi_bxdf_pdf(const vec3& normal, const vec3& wiWorld, const vec3& woWorld, const BXDFs&... bxdfs);
 };
 
 }; //namespace rurt
