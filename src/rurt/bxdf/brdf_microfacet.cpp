@@ -6,13 +6,13 @@
 namespace rurt
 {
 
-BRDFMicrofacet::BRDFMicrofacet(const vec3& color, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(BXDFType::REFLECTION), m_color(srgb_to_linear(color)), m_distribution(distribution), m_fresnel(fresnel)
+BRDFMicrofacet::BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel) :
+	BXDF(false, BXDFType::REFLECTION), m_distribution(distribution), m_fresnel(fresnel)
 {
 
 }
 
-vec3 BRDFMicrofacet::f(const HitInfo& info, const vec3& wi, const vec3& wo) const
+vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 {
     float cosThetaO = std::abs(cos_theta(wo));
 	float cosThetaI = std::abs(cos_theta(wi));
@@ -23,14 +23,13 @@ vec3 BRDFMicrofacet::f(const HitInfo& info, const vec3& wi, const vec3& wo) cons
 
     wh = normalize(wh);
 
-	return m_color * 
-	       m_distribution->distribution(wh) * 
+	return m_distribution->distribution(wh) * 
 		   m_distribution->proportion_visible(wi, wo) *
 		   m_fresnel->evaluate(dot(wi, wh)) / 
 		   (4.0f * cosThetaI * cosThetaO);
 }
 
-vec3 BRDFMicrofacet::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BRDFMicrofacet::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
 {
 	//TODO
 
@@ -39,7 +38,7 @@ vec3 BRDFMicrofacet::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, flo
 	return vec3(0.0f);
 }
 
-float BRDFMicrofacet::pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const
+float BRDFMicrofacet::pdf(const vec3& wi, const vec3& wo) const
 {
 	if(!same_hemisphere(wi, wo))
 		return 0.0f;

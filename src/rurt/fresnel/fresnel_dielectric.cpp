@@ -16,12 +16,12 @@ float FresnelDielectric::evaluate(float cosThetaI) const
 {
 	float etaI;
 	float etaT;
-	if(cosThetaI > 0.0f) //not entering, need to swap
+	if(cosThetaI > 0.0f)
 	{
 		etaI = m_etaI;
 		etaT = m_etaT;
 	}
-	else
+	else //not entering, need to swap
 	{
 		etaI = m_etaT;
 		etaT = m_etaI;

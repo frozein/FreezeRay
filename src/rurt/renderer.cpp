@@ -91,48 +91,56 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 		}
 		else
 		{
-			//get bxdf
-			std::shared_ptr<const BXDF> bxdf = hitMaterial->get_bxdf();
+			//negate ray direction to get wo:
+			vec3 wo = -1.0f * curRay.direction();
 
-			//transform current ray direction to local space:
-			mat3 toLocal = transform_between(info.hitInfo.worldNormal, RURT_UP_DIR);
-			mat3 toWorld = transform_between(RURT_UP_DIR, info.hitInfo.worldNormal);
-
-			vec3 wo = -1.0f * (toLocal * curRay.direction());
-
-			//evaluate bxdf:
+			//evaluate bsdf:
 			vec3 f;
 			float pdf;
 			vec3 wi;
 
-			if(bxdf->is_delta())
+			if(hitMaterial->bsdf_is_delta())
 			{
-				f = bxdf->sample_f(info.hitInfo, wi, wo, pdf);
+				vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+				f = hitMaterial->bsdf_sample_f(info.hitInfo, wi, wo, u, pdf);
 			}
 			else
 			{
-				if(bxdf->type() == BXDFType::REFLECTION)
-					wi = random_dir_hemisphere(RURT_UP_DIR);
-				else
-					wi = random_dir_hemisphere(RURT_DOWN_DIR);
-				
-				f = bxdf->f(info.hitInfo, wi, wo);
-				pdf = RURT_INV_2_PI;
+				switch(hitMaterial->bsdf_type())
+				{
+				case BXDFType::REFLECTION:
+					wi = random_dir_hemisphere(info.hitInfo.worldNormal);
+					pdf = RURT_INV_2_PI;
+					break;
+				case BXDFType::TRANSMISSION:
+					wi = random_dir_hemisphere(-1.0f * info.hitInfo.worldNormal);
+					pdf = RURT_INV_2_PI;
+					break;
+				case BXDFType::BOTH:
+				default:
+					wi = random_dir_sphere();
+					pdf = 2.0f * RURT_INV_2_PI;
+					break;
+				}
+
+				f = hitMaterial->bsdf_f(info.hitInfo, wi, wo);
 			}
 
 			//apply brdf to current color
-			float cosTheta = std::abs(cos_theta(wi));
+			float cosTheta = std::abs(dot(wi, info.hitInfo.worldNormal));
 			color = color * (f * cosTheta / pdf);
 
 			//set new ray
-			vec3 bounceDir = toWorld * wi;
+			vec3 bounceDir = wi;
 			vec3 bouncePos = info.hitInfo.worldPos;
 			
-			bool entering = cos_theta(wo) > 0.0f;
-			if(bxdf->type() == BXDFType::REFLECTION)
+			if(dot(bounceDir, info.hitInfo.worldNormal) > 0.0f) // reflection
 				bouncePos = bouncePos + RURT_EPSILON * info.hitInfo.worldNormal;
-			else
+			else //transmission
+			{
+				bool entering = dot(wo, info.hitInfo.worldNormal) > 0.0f;
 				bouncePos = bouncePos + (entering ? -RURT_EPSILON : RURT_EPSILON) * info.hitInfo.worldNormal;
+			}
 
 			curRay = Ray(bouncePos, bounceDir);
 		}
@@ -160,6 +168,26 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
 }
 
+vec3 Renderer::random_dir_sphere()
+{
+	vec3 randUnitSphere;
+	while(true)
+	{
+		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
+
+		float lenSqr = dot(randUnitSphere, randUnitSphere);
+		if(lenSqr > RURT_EPSILON && lenSqr <= 1.0f)
+		{
+			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
+			break;
+		}
+	}
+
+	return randUnitSphere;
+}
+
 vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 {
 	vec3 randUnitSphere;
@@ -181,48 +209,6 @@ vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 		randUnitSphere = randUnitSphere * -1.0f;
 
 	return randUnitSphere;
-}
-
-mat3 Renderer::transform_between(const vec3& from, const vec3& to) 
-{
-	//equal
-	if(dot(from, to) >=  1.0f - RURT_EPSILON)
-		return mat3_identity();
-
-	//opposite
-	if(dot(from, to) <= -1.0f + RURT_EPSILON)
-	{
-		mat3 mat = mat3();
-		mat[0][0] = -1.0f;
-		mat[1][1] = -1.0f;
-		mat[2][2] = 1.0f;
-	}
-
-    vec3 v = cross(from, to);
-    float c = dot(from, to);
-    float k = 1.0f / (1.0f + c);
-    
-    mat3 rotation;
-
-    rotation.v[0] = vec3(
-        v.x * v.x * k + c,
-        v.y * v.x * k + v.z,
-        v.z * v.x * k - v.y
-    );
-    
-    rotation.v[1] = vec3(
-        v.x * v.y * k - v.z,
-        v.y * v.y * k + c,
-        v.z * v.y * k + v.x
-    );
-    
-    rotation.v[2] = vec3(
-        v.x * v.z * k + v.y,
-        v.y * v.z * k - v.x,
-        v.z * v.z * k + c
-    );
-    
-    return rotation;
 }
 
 }; //namespace rurt

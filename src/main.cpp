@@ -1,7 +1,7 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 #include "rurt/renderer.hpp"
-#include "rurt/material_single_bxdf.hpp"
+#include "rurt/material/material_single_bxdf.hpp"
 #include "rurt/bxdf/brdf_lambertian_diffuse.hpp"
 #include "rurt/bxdf/brdf_microfacet.hpp"
 #include "rurt/bxdf/brdf_specular.hpp"
@@ -58,8 +58,8 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(vec3(1.0f, 0.0f, 0.0f)));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BTDFSpecular>(vec3(1.0f), 1.0f, 1.5f, fresnel));
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f));
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BTDFSpecular>(1.0f, 1.5f, fresnel), vec3(1.0f), vec3(0.0f));
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};

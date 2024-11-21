@@ -6,18 +6,18 @@
 namespace rurt
 {
 
-BRDFLambertianDiffuse::BRDFLambertianDiffuse(const vec3& color) :
-	BXDF(BXDFType::REFLECTION), m_color(srgb_to_linear(color))
+BRDFLambertianDiffuse::BRDFLambertianDiffuse() :
+	BXDF(false, BXDFType::REFLECTION)
 {
 
 }
 
-vec3 BRDFLambertianDiffuse::f(const HitInfo& info, const vec3& wi, const vec3& wo) const
+vec3 BRDFLambertianDiffuse::f(const vec3& wi, const vec3& wo) const
 {
-	return m_color * RURT_INV_PI;
+	return RURT_INV_PI;
 }
 
-vec3 BRDFLambertianDiffuse::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BRDFLambertianDiffuse::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
 {
 	//generate random vector in positive hemisphere:
 	//---------------
@@ -37,11 +37,11 @@ vec3 BRDFLambertianDiffuse::sample_f(const HitInfo& info, vec3& wi, const vec3& 
 
 	//return:
 	//---------------
-	pdfVal = pdf(info, wi, wo);
-	return f(info, wi, wo);
+	pdfVal = pdf(wi, wo);
+	return f(wi, wo);
 }
 
-float BRDFLambertianDiffuse::pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const
+float BRDFLambertianDiffuse::pdf(const vec3& wi, const vec3& wo) const
 {
 	return RURT_INV_2_PI;
 }

@@ -1,0 +1,46 @@
+#include "rurt/material/material_single_bxdf.hpp"
+
+//-------------------------------------------//
+
+namespace rurt
+{
+
+MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color, const vec3& emission) :
+	Material(name, bxdf->is_delta(), bxdf->type()), m_bxdf(bxdf), m_color(color), m_emission(emission)
+{
+
+}
+
+vec3 MaterialSingleBXDF::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+{
+	vec3 wi = world_to_local(hitInfo.worldNormal, wiWorld);
+	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+
+	return m_color * m_bxdf->f(wi, wo);
+}
+
+vec3 MaterialSingleBXDF::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+{
+	vec3 wi;
+	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+
+	vec3 f = m_color * m_bxdf->sample_f(wi, wo, pdf);
+
+	wiWorld = local_to_world(hitInfo.worldNormal, wi);
+	return f;
+}
+
+float MaterialSingleBXDF::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+{
+	vec3 wi = world_to_local(wiWorld, hitInfo.worldNormal);
+	vec3 wo = world_to_local(woWorld, hitInfo.worldNormal);
+
+	return m_bxdf->pdf(wi, wo);
+}
+
+vec3 MaterialSingleBXDF::emission(const HitInfo& hitInfo) const
+{
+	return m_emission;
+}
+
+}; //namespace rurt

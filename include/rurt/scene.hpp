@@ -9,6 +9,7 @@
 
 #include "ray.hpp"
 #include "object.hpp"
+#include "raycast_info.hpp"
 
 #include "quickmath.hpp"
 using namespace qm;

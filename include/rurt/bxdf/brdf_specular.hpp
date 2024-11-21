@@ -17,16 +17,13 @@ namespace rurt
 class BRDFSpecular : public BXDF
 {
 public:
-	BRDFSpecular(const vec3& color, std::shared_ptr<const Fresnel> fresnel);
+	BRDFSpecular(std::shared_ptr<const Fresnel> fresnel);
 
-	vec3 f(const HitInfo& info, const vec3& wi, const vec3& wo) const override;
-	vec3 sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdf) const override;
-	float pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const override;
-
-	bool is_delta() const override { return true; }
+	vec3 f(const vec3& wi, const vec3& wo) const override;
+	vec3 sample_f(vec3& wi, const vec3& wo, float& pdf) const override;
+	float pdf(const vec3& wi, const vec3& wo) const override;
 
 private:
-	vec3 m_color;
 	std::shared_ptr<const Fresnel> m_fresnel;
 };
 

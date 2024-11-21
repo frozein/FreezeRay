@@ -6,19 +6,19 @@
 namespace rurt
 {
 
-BTDFSpecular::BTDFSpecular(const vec3& color, float etaI, float etaT, std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(BXDFType::TRANSMISSION), m_color(srgb_to_linear(color)), m_etaI(etaI), m_etaT(etaT), m_fresnel(fresnel)
+BTDFSpecular::BTDFSpecular(float etaI, float etaT, std::shared_ptr<const Fresnel> fresnel) :
+	BXDF(true, BXDFType::TRANSMISSION), m_etaI(etaI), m_etaT(etaT), m_fresnel(fresnel)
 {
 
 }
 
-vec3 BTDFSpecular::f(const HitInfo& info, const vec3& wi, const vec3& wo) const
+vec3 BTDFSpecular::f(const vec3& wi, const vec3& wo) const
 {
 	//delta distribution, f = 0 except for 1 point
 	return vec3(0.0f);
 }
 
-vec3 BTDFSpecular::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BTDFSpecular::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
 {
 	//get indices of refraction:
 	//---------------
@@ -59,10 +59,10 @@ vec3 BTDFSpecular::sample_f(const HitInfo& info, vec3& wi, const vec3& wo, float
 	float cosTheta = cos_theta(wi);
 
 	pdfVal = 1.0f;
-	return m_color * (1.0f - m_fresnel->evaluate(cosTheta)) / std::abs(cosTheta);
+	return (1.0f - m_fresnel->evaluate(cosTheta)) / std::abs(cosTheta);
 }
 
-float BTDFSpecular::pdf(const HitInfo& info, const vec3& wi, const vec3& wo) const
+float BTDFSpecular::pdf(const vec3& wi, const vec3& wo) const
 {
 	//delta distribution, pdf = 0 except for 1 point
 	return 0.0f;
