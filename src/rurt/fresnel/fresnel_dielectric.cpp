@@ -25,6 +25,7 @@ float FresnelDielectric::evaluate(float cosThetaI) const
 	{
 		etaI = m_etaT;
 		etaT = m_etaI;
+		cosThetaI = -cosThetaI;
 	}
 	
 	float sinThetaI = std::sqrtf(1.0f - cosThetaI * cosThetaI);

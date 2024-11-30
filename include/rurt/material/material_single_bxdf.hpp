@@ -27,7 +27,7 @@ public:
 private:
 	std::shared_ptr<BXDF> m_bxdf;
 	vec3 m_color;
-	vec3 m_emission;
+	vec3 m_emission; //TODO: does it make sense to have any emission?
 };
 
 }; //namespace rurt
