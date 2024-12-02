@@ -16,12 +16,12 @@ namespace rurt
 class FresnelConstant : public Fresnel
 {
 public:
-	FresnelConstant(float value);
+	FresnelConstant(const vec3& value);
 
-	float evaluate(float cosThetaI) const override;
+	vec3 evaluate(float cosThetaI) const override;
 
 private:
-	float m_value;
+	vec3 m_value;
 };
 
 } //namespcae rurt

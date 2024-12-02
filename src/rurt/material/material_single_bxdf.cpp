@@ -5,8 +5,8 @@
 namespace rurt
 {
 
-MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color, const vec3& emission) :
-	Material(name, bxdf->is_delta(), bxdf->type()), m_bxdf(bxdf), m_color(color), m_emission(emission)
+MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color) :
+	Material(name, bxdf->is_delta(), bxdf->type()), m_bxdf(bxdf), m_color(color)
 {
 
 }
@@ -36,11 +36,6 @@ float MaterialSingleBXDF::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, 
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
 	return m_bxdf->pdf(wi, wo);
-}
-
-vec3 MaterialSingleBXDF::emission(const HitInfo& hitInfo) const
-{
-	return m_emission;
 }
 
 }; //namespace rurt

@@ -3,6 +3,7 @@
 #include "rurt/renderer.hpp"
 #include "rurt/material/material_single_bxdf.hpp"
 #include "rurt/material/material_specular_glass.hpp"
+#include "rurt/material/material_metal.hpp"
 #include "rurt/bxdf/brdf_lambertian_diffuse.hpp"
 #include "rurt/bxdf/brdf_microfacet.hpp"
 #include "rurt/bxdf/brdf_specular.hpp"
@@ -52,16 +53,12 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	//std::shared_ptr<const rurt::FresnelDielectric> fresnel = std::make_shared<rurt::FresnelDielectric>(1.0f, 1.5f);
-	//std::shared_ptr<const rurt::FresnelConductor> fresnel = std::make_shared<rurt::FresnelConductor>(1.0f, 0.13f, 3.61f);
-	std::shared_ptr<const rurt::FresnelConstant> fresnel = std::make_shared<rurt::FresnelConstant>(0.0f);
-
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f), vec3(0.0f));
-	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BTDFSpecular>(1.0f, 1.5f, fresnel), vec3(1.0f), vec3(0.0f));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSpecularGlass>("", vec3(1.0f));
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f));
+	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSpecularGlass>("", vec3(1.0f));
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialMetal>("", rurt::MetalType::GOLD, 0.5f, 0.5f);
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};

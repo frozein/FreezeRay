@@ -8,6 +8,7 @@
 #define RURT_FRESNEL_H
 
 #include "quickmath.hpp"
+using namespace qm;
 
 //-------------------------------------------//
 

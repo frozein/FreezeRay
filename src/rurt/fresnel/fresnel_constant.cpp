@@ -6,13 +6,13 @@
 namespace rurt
 {
 
-FresnelConstant::FresnelConstant(float value) :
+FresnelConstant::FresnelConstant(const vec3& value) :
 	m_value(value)
 {
 
 }
 
-float FresnelConstant::evaluate(float cosnThetaI) const
+vec3 FresnelConstant::evaluate(float cosnThetaI) const
 {
 	return m_value;
 }

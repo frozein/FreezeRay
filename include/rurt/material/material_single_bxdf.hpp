@@ -16,18 +16,15 @@ namespace rurt
 class MaterialSingleBXDF : public Material
 {
 public:
-	MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color, const vec3& emission);
+	MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color);
 
 	vec3 bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 	vec3 bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override;
 	float bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 
-	vec3 emission(const HitInfo& hitInfo) const override;
-
 private:
 	std::shared_ptr<BXDF> m_bxdf;
 	vec3 m_color;
-	vec3 m_emission; //TODO: does it make sense to have any emission?
 };
 
 }; //namespace rurt

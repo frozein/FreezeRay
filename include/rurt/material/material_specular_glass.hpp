@@ -26,8 +26,6 @@ public:
 	vec3 bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override;
 	float bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 
-	vec3 emission(const HitInfo& hitInfo) const override;
-
 private:
 	FresnelDielectric m_fresnel;
 	BRDFSpecular m_brdf;

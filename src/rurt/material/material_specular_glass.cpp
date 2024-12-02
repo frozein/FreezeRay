@@ -60,9 +60,4 @@ float MaterialSpecularGlass::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorl
 	return 1.0f;
 }
 
-vec3 MaterialSpecularGlass::emission(const HitInfo& hitInfo) const
-{
-	return vec3(0.0f);
-}
-
 }; //namespace rurt

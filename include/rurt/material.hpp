@@ -34,8 +34,6 @@ public:
 	bool bsdf_is_delta() const;
 	BXDFType bsdf_type() const;
 
-	virtual vec3 emission(const HitInfo& hitInfo) const = 0;
-
 private:
 	std::string m_name;
 	BXDFType m_type;
