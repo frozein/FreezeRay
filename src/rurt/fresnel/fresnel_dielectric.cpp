@@ -12,7 +12,7 @@ FresnelDielectric::FresnelDielectric(float etaI, float etaT) :
 
 }
 
-float FresnelDielectric::evaluate(float cosThetaI) const
+vec3 FresnelDielectric::evaluate(float cosThetaI) const
 {
 	float etaI;
 	float etaT;
@@ -37,7 +37,7 @@ float FresnelDielectric::evaluate(float cosThetaI) const
 
 	float rpar  = ((etaT * cosThetaI) - (etaI * cosThetaT)) / ((etaT * cosThetaI) + (etaI * cosThetaT));
 	float rperp = ((etaI * cosThetaI) - (etaT * cosThetaT)) / ((etaI * cosThetaI) + (etaT * cosThetaT));
-	return (rpar * rpar + rperp * rperp) / 2.0f;
+	return vec3((rpar * rpar + rperp * rperp) / 2.0f);
 }
 
 }; //namespace rurt

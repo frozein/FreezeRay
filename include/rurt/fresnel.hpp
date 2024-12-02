@@ -7,6 +7,8 @@
 #ifndef RURT_FRESNEL_H
 #define RURT_FRESNEL_H
 
+#include "quickmath.hpp"
+
 //-------------------------------------------//
 
 namespace rurt
@@ -15,7 +17,7 @@ namespace rurt
 class Fresnel
 {
 public:
-	virtual float evaluate(float cosThetaI) const = 0;
+	virtual vec3 evaluate(float cosThetaI) const = 0;
 };
 
 } //namespace rurt

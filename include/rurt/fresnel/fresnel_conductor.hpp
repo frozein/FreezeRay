@@ -16,14 +16,14 @@ namespace rurt
 class FresnelConductor : public Fresnel
 {
 public:
-	FresnelConductor(float etaI, float etaT, float absorption);
+	FresnelConductor(const vec3& etaI, const vec3& etaT, const vec3& absorption);
 
-	float evaluate(float cosThetaI) const override;
+	vec3 evaluate(float cosThetaI) const override;
 
 private:
-	float m_etaI;
-	float m_etaT;
-	float m_absorption;
+	vec3 m_etaI;
+	vec3 m_etaT;
+	vec3 m_absorption;
 };
 
 } //namespace rurt

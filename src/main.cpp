@@ -86,7 +86,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 10);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 100);
 
 	//draw loop until rendering finished:
 	//---------------

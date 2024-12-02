@@ -32,6 +32,7 @@
  * float      distance                   (vecn v1, vecn v2);
  * vecn       min                        (vecn v1, vecn v2);
  * vecn       max                        (vecn v1, vecn v2);
+ * vecn       sqrt                       (vecn v)
  * 
  * matn       matn_identity              ();
  * matn       transpose                  (matn m);
@@ -120,6 +121,7 @@
 #define QM_COSF  cosf
 #define QM_TANF  tanf
 #define QM_ACOSF acosf
+#define QM_SQRTF sqrtf
 
 namespace qm
 {
@@ -932,6 +934,41 @@ inline vec4 max(const vec4& v1, const vec4& v2)
 	result.w = QM_MAX(v1.w, v2.w);
 
 	#endif
+
+	return result;
+}
+
+//sqrt:
+
+inline vec2 sqrt(const vec2& v)
+{
+	vec2 result;
+
+	result.x = QM_SQRTF(v.x);
+	result.y = QM_SQRTF(v.y);
+
+	return result;
+}
+
+inline vec3 sqrt(const vec3& v)
+{
+	vec3 result;
+
+	result.x = QM_SQRTF(v.x);
+	result.y = QM_SQRTF(v.y);
+	result.z = QM_SQRTF(v.z);
+
+	return result;
+}
+
+inline vec4 sqrt(const vec4& v)
+{
+	vec4 result;
+
+	result.x = QM_SQRTF(v.x);
+	result.y = QM_SQRTF(v.y);
+	result.z = QM_SQRTF(v.z);
+	result.w = QM_SQRTF(v.w);
 
 	return result;
 }

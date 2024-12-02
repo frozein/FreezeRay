@@ -18,7 +18,7 @@ class FresnelDielectric : public Fresnel
 public:
 	FresnelDielectric(float etaI, float etaT);
 
-	float evaluate(float cosThetaI) const override;
+	vec3 evaluate(float cosThetaI) const override;
 
 private:
 	float m_etaI;
