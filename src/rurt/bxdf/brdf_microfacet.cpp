@@ -18,7 +18,7 @@ vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 	float cosThetaI = std::abs(cos_theta(wi));
     vec3 wh = wi + wo;
 
-	if(cosThetaI == 0.0f || cosThetaO == 0.0f || wh.x == 0.0f && wh.y == 0.0f && wh.z == 0.0f)
+	if(cosThetaI == 0.0f || cosThetaO == 0.0f || (wh.x == 0.0f && wh.y == 0.0f && wh.z == 0.0f))
 		return vec3(0.0f);
 
     wh = normalize(wh);

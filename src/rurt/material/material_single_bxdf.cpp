@@ -5,7 +5,7 @@
 namespace rurt
 {
 
-MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<BXDF> bxdf, const vec3& color) :
+MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<const BXDF> bxdf, const vec3& color) :
 	Material(name, bxdf->is_delta(), bxdf->type()), m_bxdf(bxdf), m_color(color)
 {
 

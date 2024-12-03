@@ -1,4 +1,4 @@
-/* btdf_specular_reflection.hpp
+/* btdf_specular.hpp
  *
  * contains a definition for a specular BTDF model
  */

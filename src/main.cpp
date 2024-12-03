@@ -8,6 +8,7 @@
 #include "rurt/bxdf/brdf_microfacet.hpp"
 #include "rurt/bxdf/brdf_specular.hpp"
 #include "rurt/bxdf/btdf_specular.hpp"
+#include "rurt/bxdf/btdf_microfacet.hpp"
 #include "rurt/fresnel/fresnel_dielectric.hpp"
 #include "rurt/fresnel/fresnel_conductor.hpp"
 #include "rurt/fresnel/fresnel_constant.hpp"
@@ -53,12 +54,17 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
+	std::shared_ptr<const rurt::MicrofacetDistributionTrowbridgeReitz> distribution = std::make_shared<rurt::MicrofacetDistributionTrowbridgeReitz>(1.0f, 1.0f);
+	std::shared_ptr<const rurt::FresnelConstant> fresnel = std::make_shared<rurt::FresnelConstant>(vec3(0.0f));
+	std::shared_ptr<const rurt::BTDFMicrofacet> btdf = std::make_shared<rurt::BTDFMicrofacet>(1.0f, 1.5f, distribution, fresnel);
+
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f));
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f));
 	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSpecularGlass>("", vec3(1.0f));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialMetal>("", rurt::MetalType::GOLD, 0.5f, 0.5f);
+	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialMetal>("", rurt::MetalType::GOLD, 0.5f, 0.5f);
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", btdf, vec3(1.0f));
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};
@@ -83,7 +89,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 100);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 1);
 
 	//draw loop until rendering finished:
 	//---------------

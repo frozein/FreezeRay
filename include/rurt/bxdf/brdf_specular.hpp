@@ -1,4 +1,4 @@
-/* brdf_specular_reflection.hpp
+/* brdf_specular.hpp
  *
  * contains a definition for a specular BRDF model
  */
