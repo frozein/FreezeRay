@@ -1,4 +1,4 @@
-/* material_glass.hpp
+/* material_specular_glass.hpp
  *
  * contains a definition for a perfectly specular glass material
  * (weighted by fresnel terms)
@@ -20,7 +20,7 @@ namespace rurt
 class MaterialSpecularGlass : public Material
 {
 public:
-	MaterialSpecularGlass(const std::string& name, const vec3& color);
+	MaterialSpecularGlass(const std::string& name, const vec3& colorReflection, const vec3& colorTransmission);
 
 	vec3 bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 	vec3 bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override;
@@ -31,7 +31,8 @@ private:
 	BRDFSpecular m_brdf;
 	BTDFSpecular m_btdf;
 
-	vec3 m_color;
+	vec3 m_colorReflection;
+	vec3 m_colorTransmission;
 };
 
 }; //namespace rurt

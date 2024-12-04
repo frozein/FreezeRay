@@ -18,7 +18,7 @@ namespace rurt
 class BTDFMicrofacet : public BXDF
 {
 public:
-	BTDFMicrofacet(float m_etaI, float m_etaT, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel);
+	BTDFMicrofacet(float etaI, float etaT, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel);
 
 	vec3 f(const vec3& wi, const vec3& wo) const override;
 	vec3 sample_f(vec3& wi, const vec3& wo, float& pdf) const override;

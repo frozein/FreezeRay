@@ -9,8 +9,8 @@
 namespace rurt
 {
 
-MaterialSpecularGlass::MaterialSpecularGlass(const std::string& name, const vec3& color) : 
-	Material(name, true, BXDFType::BOTH), m_color(color), m_fresnel(ETA_I, ETA_T),
+MaterialSpecularGlass::MaterialSpecularGlass(const std::string& name, const vec3& colorReflection, const vec3& colorTransmission) : 
+	Material(name, true, BXDFType::BOTH), m_colorReflection(colorReflection), m_colorTransmission(colorTransmission), m_fresnel(ETA_I, ETA_T),
 	m_brdf(std::make_shared<FresnelDielectric>(m_fresnel)), m_btdf(ETA_I, ETA_T, std::make_shared<FresnelDielectric>(m_fresnel))
 {
 
@@ -27,10 +27,10 @@ vec3 MaterialSpecularGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld,
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
     
-	vec3 f;
+	vec3 f = vec3(0.0f);
 
     if(u.x < 0.5f)
-        f = m_brdf.sample_f(wi, wo, pdf);
+        f = m_colorReflection * m_brdf.sample_f(wi, wo, pdf);
 	else
 	{
 		bool entering = cos_theta(wo) > 0.0f;
@@ -43,15 +43,15 @@ vec3 MaterialSpecularGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld,
 		float cosThetaI = std::abs(cos_theta(wo));
         float sinTheta2T = eta * eta * (1.0f - cosThetaI * cosThetaI);
         if(sinTheta2T >= 1.0f) //total internal reflection
-            f = m_brdf.sample_f(wi, wo, pdf);
+            f = m_colorReflection * m_brdf.sample_f(wi, wo, pdf);
 		else
-            f = m_btdf.sample_f(wi, wo, pdf);
+            f = m_colorTransmission * m_btdf.sample_f(wi, wo, pdf);
     }
 
 	pdf /= 2.0f;
 
 	wiWorld = local_to_world(hitInfo.worldNormal, wi);
-	return m_color * f;
+	return f;
 }
 
 float MaterialSpecularGlass::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
