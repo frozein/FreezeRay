@@ -38,6 +38,12 @@ union RaycastInfo
 	MissInfo missInfo;
 };
 
+struct VisibilityTestInfo
+{
+	bool infinite;
+	vec3 endPos;
+};
+
 }; //namespace rurt
 
 #endif //#ifndef RURT_INTERSECTION_INFO_H
