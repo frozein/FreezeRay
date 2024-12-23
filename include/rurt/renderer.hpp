@@ -40,7 +40,7 @@ private:
 
 	vec3 trace_path(const Ray& cameraRay) const;
 	vec3 uniform_sample_one_light(const IntersectionInfo& hitInfo, const vec3& wo) const;
-	bool trace_visibility_ray(const vec3& initialHitPos, const vec3& wi, const VisibilityTestInfo& visInfo) const;
+	bool trace_visibility_ray(const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const;
 
 	Ray get_camera_ray(uint32_t x, uint32_t y) const;
 	static vec3 random_dir_sphere();

@@ -187,15 +187,21 @@ vec3 Renderer::uniform_sample_one_light(const IntersectionInfo& hitInfo, const v
 
 	//trace visibility ray, return:
 	//---------------
-	if(trace_visibility_ray(hitInfo.worldPos, wi, visInfo))
+	if(trace_visibility_ray(hitInfo, wi, wo, visInfo))
 		return f * li / pdf;
 	else
 		return vec3(0.0f);
 }
 
-bool Renderer::trace_visibility_ray(const vec3& initialHitPos, const vec3& wi, const VisibilityTestInfo& visInfo) const
+bool Renderer::trace_visibility_ray(const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const
 {
-	Ray ray(initialHitPos + wi * RURT_EPSILON, wi);
+	vec3 rayPos = initialHitInfo.worldPos;
+	if(dot(wo, initialHitInfo.worldNormal) > 0.0f)
+		rayPos = rayPos + initialHitInfo.worldNormal * RURT_EPSILON;
+	else
+		rayPos = rayPos - initialHitInfo.worldNormal * RURT_EPSILON;
+
+	Ray ray(rayPos, wi);
 
 	IntersectionInfo hitInfo;
 	bool hit = m_scene->intersect(ray, hitInfo);
@@ -207,8 +213,8 @@ bool Renderer::trace_visibility_ray(const vec3& initialHitPos, const vec3& wi, c
 		if(!hit)
 			return true;
 
-		float maxDist = distance(initialHitPos, visInfo.endPos);
-		float dist = distance(initialHitPos, hitInfo.worldPos);
+		float maxDist = distance(initialHitInfo.worldPos, visInfo.endPos);
+		float dist = distance(initialHitInfo.worldPos, hitInfo.worldPos);
 
 		return dist > maxDist;
 	}
