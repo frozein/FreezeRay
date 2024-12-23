@@ -18,7 +18,7 @@ class LightDirectional : public Light
 public:
 	LightDirectional(const vec3& dir, const vec3& intensity, float worldRadius = 1.0f);
 
-	vec3 sample_li(const HitInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
+	vec3 sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
 	vec3 power() const;
 
 private:

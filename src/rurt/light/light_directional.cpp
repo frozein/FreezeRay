@@ -12,7 +12,7 @@ LightDirectional::LightDirectional(const vec3& dir, const vec3& intensity, float
 
 }
 
-vec3 LightDirectional::sample_li(const HitInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
+vec3 LightDirectional::sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	wiWorld = m_dir;
 	pdf = 1.0f;

@@ -22,7 +22,7 @@ class Light
 public:
 	Light(bool delta) : m_delta(delta) {};
 
-	virtual vec3 sample_li(const HitInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const = 0;
+	virtual vec3 sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const = 0;
 	virtual vec3 power() const = 0;
 
 	bool is_delta() const { return m_delta; }

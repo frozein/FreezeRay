@@ -18,7 +18,7 @@ MaterialGlass::MaterialGlass(const std::string& name, const vec3& colorReflectio
 
 }
 
-vec3 MaterialGlass::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+vec3 MaterialGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
@@ -32,7 +32,7 @@ vec3 MaterialGlass::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const ve
 	return f;
 }
 
-vec3 MaterialGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -64,7 +64,7 @@ vec3 MaterialGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const v
 	return f;
 }
 
-float MaterialGlass::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+float MaterialGlass::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);

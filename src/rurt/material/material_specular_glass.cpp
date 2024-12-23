@@ -16,13 +16,13 @@ MaterialSpecularGlass::MaterialSpecularGlass(const std::string& name, const vec3
 
 }
 
-vec3 MaterialSpecularGlass::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+vec3 MaterialSpecularGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	//delta distribution
 	return vec3(0.0f);
 }
 
-vec3 MaterialSpecularGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialSpecularGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -54,7 +54,7 @@ vec3 MaterialSpecularGlass::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld,
 	return f;
 }
 
-float MaterialSpecularGlass::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+float MaterialSpecularGlass::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	//delta distribution
 	return 1.0f;

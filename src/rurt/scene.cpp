@@ -6,20 +6,21 @@
 namespace rurt
 {
 
-Scene::Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& objects)
+Scene::Scene(const std::vector<ObjectReference>& objects, const std::vector<std::shared_ptr<const Light>>& lights) :
+	m_lights(lights)
 {
 	for(uint32_t i = 0; i < objects.size(); i++)
 	{
-		ObjectRef ref;
-		ref.object = objects[i].first;
+		ObjectReferenceFull ref;
+		ref.object = objects[i].object;
 
-		ref.transform = objects[i].second;
-		ref.transformNoTranslate = objects[i].second;
+		ref.transform = objects[i].transform;
+		ref.transformNoTranslate = objects[i].transform;
 		ref.transformNoTranslate.m[3][0] = 0.0f;
 		ref.transformNoTranslate.m[3][1] = 0.0f;
 		ref.transformNoTranslate.m[3][2] = 0.0f;
 
-		ref.invTransform = inverse(objects[i].second);
+		ref.invTransform = inverse(objects[i].transform);
 		ref.invTransformNoTranslate = ref.invTransform;
 		ref.invTransformNoTranslate.m[3][0] = 0.0f;
 		ref.invTransformNoTranslate.m[3][1] = 0.0f;
@@ -29,7 +30,7 @@ Scene::Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& 
 	}
 }
 
-RaycastInfo Scene::intersect(const Ray& worldRay, std::shared_ptr<const Material>& hitMaterial) const
+bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 {
 	float minT = INFINITY;
 
@@ -74,43 +75,31 @@ RaycastInfo Scene::intersect(const Ray& worldRay, std::shared_ptr<const Material
 		}
 	}
 
-	RaycastInfo retval = {};
 	if(hit)
 	{
-		hitMaterial = minMaterial;
-
-		retval.hitInfo.worldPos = minWorldHitPos;
-		retval.hitInfo.objectPos = minObjectHitPos;
-		retval.hitInfo.worldNormal = normalize(minWorldNormal);
-		retval.hitInfo.objectNormal = normalize(minObjectNormal);
-		retval.hitInfo.uv = minUV;
+		hitInfo.material = minMaterial;
+		hitInfo.worldPos = minWorldHitPos;
+		hitInfo.objectPos = minObjectHitPos;
+		hitInfo.worldNormal = normalize(minWorldNormal);
+		hitInfo.objectNormal = normalize(minObjectNormal);
+		hitInfo.uv = minUV;
 	}
 	else
 	{
-		hitMaterial = nullptr;
-
-		retval.missInfo.skyColor = sky_color(worldRay);
-		retval.missInfo.skyEmission = sky_emission(worldRay);
+		hitInfo.material = nullptr;
+		hitInfo.worldPos = vec3(0.0f);
+		hitInfo.objectPos = vec3(0.0f);
+		hitInfo.worldNormal = vec3(0.0f);
+		hitInfo.objectNormal = vec3(0.0f);
+		hitInfo.uv = vec2(0.0f);
 	}
 
-	return retval;
+	return hit;
 }
 
-//-------------------------------------------//
-
-vec3 Scene::sky_color(const Ray& ray) const
+const std::vector<std::shared_ptr<const Light>>& Scene::get_lights() const
 {
-	//temp implementation
-
-	float skyPos = ray.direction().y * 0.5f + 0.5f;
-	return (1.0f - skyPos) * vec3(0.71f, 0.85f, 0.90f) + skyPos * vec3(0.00f, 0.45f, 0.74f);
-}
-
-vec3 Scene::sky_emission(const Ray& ray) const
-{
-	//temp implementation
-	
-	return vec3(std::max(ray.direction().y, 0.0f));
+	return m_lights;
 }
 
 }; //namespace rurt

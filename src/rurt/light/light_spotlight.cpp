@@ -13,7 +13,7 @@ LightSpotlight::LightSpotlight(const mat4& transform, const vec3& intensity, flo
 
 }
 
-vec3 LightSpotlight::sample_li(const HitInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
+vec3 LightSpotlight::sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	vec3 toLight = m_pos - hitInfo.worldPos;
 

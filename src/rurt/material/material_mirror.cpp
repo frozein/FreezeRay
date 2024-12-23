@@ -12,13 +12,13 @@ MaterialMirror::MaterialMirror(const std::string& name, const vec3& color) :
 
 }
 
-vec3 MaterialMirror::bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+vec3 MaterialMirror::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	//delta distribution
 	return vec3(0.0f);
 }
 
-vec3 MaterialMirror::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialMirror::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -29,7 +29,7 @@ vec3 MaterialMirror::bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const 
 	return f;
 }
 
-float MaterialMirror::bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+float MaterialMirror::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
 {
 	//delta distribution
 	return 1.0f;

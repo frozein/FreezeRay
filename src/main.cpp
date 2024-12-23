@@ -16,6 +16,8 @@
 #include "rurt/fresnel/fresnel_constant.hpp"
 #include "rurt/microfacet_distribution/microfacet_distribution_beckmann.hpp"
 #include "rurt/microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
+#include "rurt/light/light_directional.hpp"
+#include "rurt/light/light_point.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -59,8 +61,9 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialPlastic>("", vec3(0.0f), vec3(1.0f), 0.25f);
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f));
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f));
+	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialPlastic>("", vec3(0.0f), vec3(1.0f), 0.25f);
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};
@@ -72,9 +75,13 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Object> object2 = std::make_shared<rurt::Object>(meshList2, materialList2);
 	mat4 objectTransform2 = mat4_identity();
 
-	std::vector<std::pair<std::shared_ptr<const rurt::Object>, mat4>> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
+	std::vector<rurt::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
-	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList);
+	std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(1.0f));
+	std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
+	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1, light2};
+
+	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList, lightList);
 
 	//create renderer:
 	//---------------

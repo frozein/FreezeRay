@@ -27,9 +27,9 @@ public:
 	const std::string& get_name() const;
 	void set_name(const std::string& name);
 
-	virtual vec3 bsdf_f(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const = 0;
-	virtual vec3 bsdf_sample_f(const HitInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const = 0;
-	virtual float bsdf_pdf(const HitInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const = 0;
+	virtual vec3 bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const = 0;
+	virtual vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const = 0;
+	virtual float bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const = 0;
 
 	bool bsdf_is_delta() const;
 	BXDFType bsdf_type() const;

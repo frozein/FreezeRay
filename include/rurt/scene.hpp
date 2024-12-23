@@ -9,6 +9,7 @@
 
 #include "ray.hpp"
 #include "object.hpp"
+#include "light.hpp"
 #include "raycast_info.hpp"
 
 #include "quickmath.hpp"
@@ -19,18 +20,23 @@ using namespace qm;
 namespace rurt
 {
 
+struct ObjectReference
+{
+	std::shared_ptr<const Object> object;
+	mat4 transform;
+};
+
 class Scene
 {
 public:
-	Scene(const std::vector<std::pair<std::shared_ptr<const Object>, mat4>>& objects);
+	Scene(const std::vector<ObjectReference>& objects, const std::vector<std::shared_ptr<const Light>>& lights);
 
-	RaycastInfo intersect(const Ray& ray, std::shared_ptr<const Material>& hitMaterial) const;
+	bool intersect(const Ray& ray, IntersectionInfo& info) const;
+
+	const std::vector<std::shared_ptr<const Light>>& get_lights() const;
 
 private:
-	vec3 sky_color(const Ray& ray) const;
-	vec3 sky_emission(const Ray& ray) const;
-
-	struct ObjectRef
+	struct ObjectReferenceFull
 	{
 		std::shared_ptr<const Object> object;
 		mat4 transform;
@@ -38,7 +44,9 @@ private:
 		mat4 invTransform;
 		mat4 invTransformNoTranslate;
 	};
-	std::vector<ObjectRef> m_objects;
+	std::vector<ObjectReferenceFull> m_objects;
+
+	std::vector<std::shared_ptr<const Light>> m_lights;
 };
 
 }; //namespace rurt

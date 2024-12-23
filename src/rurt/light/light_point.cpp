@@ -12,7 +12,7 @@ LightPoint::LightPoint(const vec3& pos, const vec3& intensity) :
 
 }
 
-vec3 LightPoint::sample_li(const HitInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
+vec3 LightPoint::sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	vec3 toLight = m_pos - hitInfo.worldPos;
 

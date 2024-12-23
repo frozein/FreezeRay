@@ -15,8 +15,12 @@ using namespace qm;
 namespace rurt
 {
 
-struct HitInfo
+class Material;
+
+struct IntersectionInfo
 {
+	std::shared_ptr<const Material> material;
+
 	vec3 worldPos;
 	vec3 objectPos;
 
@@ -24,18 +28,6 @@ struct HitInfo
 	vec3 objectNormal;
 	
 	vec2 uv;
-};
-
-struct MissInfo
-{
-	vec3 skyColor;
-	vec3 skyEmission;
-};
-
-union RaycastInfo
-{
-	HitInfo hitInfo;
-	MissInfo missInfo;
 };
 
 struct VisibilityTestInfo

@@ -67,9 +67,10 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 
 //-------------------------------------------//
 
-vec3 Renderer::trace_path(const Ray& cameraRay)
+vec3 Renderer::trace_path(const Ray& cameraRay) const
 {
-	vec3 color = vec3(1.0f);
+	vec3 light = vec3(0.0f);
+	vec3 mult = vec3(1.0f);
 
 	static int count = 0;
 	count++;
@@ -77,82 +78,140 @@ vec3 Renderer::trace_path(const Ray& cameraRay)
 	Ray curRay = cameraRay;
 	for(uint32_t i = 0; i < RURT_RAY_BOUNCE_LIMIT; i++)
 	{
-		std::shared_ptr<const Material> hitMaterial;
-		RaycastInfo info = m_scene->intersect(curRay, hitMaterial);
+		IntersectionInfo hitInfo;
+		bool hit = m_scene->intersect(curRay, hitInfo);
 
-		if(hitMaterial == nullptr)
+		if(!hit)
 		{
-			if(i == 0)
-				color = info.missInfo.skyColor;
-			else
-				color = color * info.missInfo.skyEmission;
-			
+			//TODO: add contribution from infinite area lights (environment maps)
+			//only do this for rays spawned from delta distribs
 			break;
+		}
+
+		//negate ray direction to get wo:
+		vec3 wo = -1.0f * curRay.direction();
+
+		//add contribution from light sources
+		if(!hitInfo.material->bsdf_is_delta())
+			light = light + mult * uniform_sample_one_light(hitInfo, wo);
+
+		//evaluate bsdf:
+		vec3 f;
+		float pdf;
+		vec3 wi;
+
+		if(hitInfo.material->bsdf_is_delta())
+		{
+			vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+			f = hitInfo.material->bsdf_sample_f(hitInfo, wi, wo, u, pdf);
 		}
 		else
 		{
-			//negate ray direction to get wo:
-			vec3 wo = -1.0f * curRay.direction();
-
-			//evaluate bsdf:
-			vec3 f;
-			float pdf;
-			vec3 wi;
-
-			if(hitMaterial->bsdf_is_delta())
+			switch(hitInfo.material->bsdf_type())
 			{
-				vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
-				f = hitMaterial->bsdf_sample_f(info.hitInfo, wi, wo, u, pdf);
-			}
-			else
-			{
-				switch(hitMaterial->bsdf_type())
-				{
-				case BXDFType::REFLECTION:
-					wi = random_dir_hemisphere(info.hitInfo.worldNormal);
-					pdf = RURT_INV_2_PI;
-					break;
-				case BXDFType::TRANSMISSION:
-					wi = random_dir_hemisphere(-1.0f * info.hitInfo.worldNormal);
-					pdf = RURT_INV_2_PI;
-					break;
-				case BXDFType::BOTH:
-				default:
-					wi = random_dir_sphere();
-					pdf = 2.0f * RURT_INV_2_PI;
-					break;
-				}
-
-				f = hitMaterial->bsdf_f(info.hitInfo, wi, wo);
+			case BXDFType::REFLECTION:
+				wi = random_dir_hemisphere(hitInfo.worldNormal);
+				pdf = RURT_INV_2_PI;
+				break;
+			case BXDFType::TRANSMISSION:
+				wi = random_dir_hemisphere(-1.0f * hitInfo.worldNormal);
+				pdf = RURT_INV_2_PI;
+				break;
+			case BXDFType::BOTH:
+			default:
+				wi = random_dir_sphere();
+				pdf = 2.0f * RURT_INV_2_PI;
+				break;
 			}
 
-			//apply brdf to current color
-			float cosTheta = std::abs(dot(wi, info.hitInfo.worldNormal));
-			color = color * (f * cosTheta / pdf);
-
-			//set new ray
-			vec3 bounceDir = wi;
-			vec3 bouncePos = info.hitInfo.worldPos;
-			
-			if(dot(bounceDir, info.hitInfo.worldNormal) > 0.0f) // reflection
-				bouncePos = bouncePos + RURT_EPSILON * info.hitInfo.worldNormal;
-			else //transmission
-			{
-				bool entering = dot(wo, info.hitInfo.worldNormal) > 0.0f;
-				bouncePos = bouncePos + (entering ? -RURT_EPSILON : RURT_EPSILON) * info.hitInfo.worldNormal;
-			}
-
-			curRay = Ray(bouncePos, bounceDir);
+			f = hitInfo.material->bsdf_f(hitInfo, wi, wo);
 		}
 
+		//apply brdf to current color
+		float cosTheta = std::abs(dot(wi, hitInfo.worldNormal));
+		mult = mult * (f * cosTheta / pdf);
+
+		//set new ray
+		vec3 bounceDir = wi;
+		vec3 bouncePos = hitInfo.worldPos;
+		
+		if(dot(bounceDir, hitInfo.worldNormal) > 0.0f) //reflection
+			bouncePos = bouncePos + RURT_EPSILON * hitInfo.worldNormal;
+		else //transmission
+		{
+			bool entering = dot(wo, hitInfo.worldNormal) > 0.0f;
+			bouncePos = bouncePos + (entering ? -RURT_EPSILON : RURT_EPSILON) * hitInfo.worldNormal;
+		}
+
+		curRay = Ray(bouncePos, bounceDir);
+
 		//russian roulette to exit based on color:
-		float maxComp = std::max(std::max(color.r, color.g), color.b);
+		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);
+		float q = std::max(0.05f, 1.0f - maxComp);
+		
 		float roulette = (float)rand() / RAND_MAX;
-		if(roulette > maxComp)
+		if(roulette < q)
 			break;
+		else
+			mult = mult / (1.0f - q);
 	}
 
-	return color;
+	return light;
+}
+
+vec3 Renderer::uniform_sample_one_light(const IntersectionInfo& hitInfo, const vec3& wo) const
+{
+	//choose random light index:
+	//---------------
+	uint32_t numLights = (uint32_t)m_scene->get_lights().size();
+	if(numLights == 0)
+		return vec3(0.0f);
+
+	uint32_t lightIdx = rand() % numLights;
+
+	//sample li:
+	//---------------
+	vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	vec3 wi;
+	VisibilityTestInfo visInfo;
+	float pdf;
+
+	const std::shared_ptr<const Light>& light = m_scene->get_lights()[lightIdx];
+	vec3 li = light->sample_li(hitInfo, u, wi, visInfo, pdf);
+
+	pdf /= (float)numLights;
+
+	//compute bsdf f:
+	//---------------
+	vec3 f = hitInfo.material->bsdf_f(hitInfo, wi, wo) * std::abs(dot(wi, hitInfo.worldNormal));
+
+	//trace visibility ray, return:
+	//---------------
+	if(trace_visibility_ray(hitInfo.worldPos, wi, visInfo))
+		return f * li / pdf;
+	else
+		return vec3(0.0f);
+}
+
+bool Renderer::trace_visibility_ray(const vec3& initialHitPos, const vec3& wi, const VisibilityTestInfo& visInfo) const
+{
+	Ray ray(initialHitPos + wi * RURT_EPSILON, wi);
+
+	IntersectionInfo hitInfo;
+	bool hit = m_scene->intersect(ray, hitInfo);
+
+	if(visInfo.infinite)
+		return !hit;
+	else
+	{
+		if(!hit)
+			return true;
+
+		float maxDist = distance(initialHitPos, visInfo.endPos);
+		float dist = distance(initialHitPos, hitInfo.worldPos);
+
+		return dist > maxDist;
+	}
 }
 
 Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
