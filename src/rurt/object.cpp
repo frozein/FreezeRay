@@ -25,8 +25,14 @@ Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std
 			//TODO!!!!
 		}
 
-		m_meshes.push_back({meshes[i], mat});
+		m_components.push_back({meshes[i], mat});
 	}
+}
+
+Object::Object(const std::vector<ObjectComponent>& components) :
+	m_components(components)
+{
+
 }
 
 bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, std::shared_ptr<const Material>& material) const
@@ -36,18 +42,18 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, std:
 	bool hit = false;
 	minT = INFINITY;
 
-	for(uint32_t i = 0; i < m_meshes.size(); i++)
+	for(uint32_t i = 0; i < m_components.size(); i++)
 	{
 		float t;
 		vec2 newUV;
 		vec3 newNormal;
-		if(m_meshes[i].first->intersect(ray, t, newUV, newNormal) && t < minT)
+		if(m_components[i].mesh->intersect(ray, t, newUV, newNormal) && t < minT)
 		{
 			hit |= true;
 			minT = t;
 			uv = newUV;
 			normal = newNormal;
-			material = m_meshes[i].second;
+			material = m_components[i].material;
 		}
 	}
 

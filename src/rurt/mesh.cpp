@@ -82,6 +82,41 @@ void Mesh::set_material(const std::string& material)
 	m_material = material;
 }
 
+uint32_t Mesh::get_num_tris() const
+{
+	return m_numTris;
+}
+
+void Mesh::get_tri_indices(uint32_t triIdx, uint32_t& idx0, uint32_t& idx1, uint32_t& idx2) const
+{
+	triIdx *= 3;
+
+	idx0 = m_indices[triIdx + 0];
+	idx1 = m_indices[triIdx + 1];
+	idx2 = m_indices[triIdx + 2];
+}
+
+vec3 Mesh::get_vert_pos_at(uint32_t idx) const
+{
+	return *reinterpret_cast<const vec3*>(&m_verts.get()[idx * m_vertStride + m_vertPosOffset]);
+}
+
+vec2 Mesh::get_vert_uv_at(uint32_t idx) const
+{
+	if((m_vertAttribs & VERTEX_ATTRIB_UV) == 0)
+		return vec2(0.0f);
+	
+	return *reinterpret_cast<const vec2*>(&m_verts.get()[idx * m_vertStride + m_vertUvOffset]);
+}
+
+vec3 Mesh::get_vert_normal_at(uint32_t idx) const
+{
+	if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) == 0)
+		return vec3(0.0f);
+	
+	return *reinterpret_cast<const vec3*>(&m_verts.get()[idx * m_vertStride + m_vertNormalOffset]);
+}
+
 bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 {
 	if(!m_valid)
@@ -95,9 +130,9 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 	for(uint32_t i = 0; i < m_numTris; i++)
 	{
 		uint32_t triIdx = i * 3;
-		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
-		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
-		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
+		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride + m_vertPosOffset;
+		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride + m_vertPosOffset;
+		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride + m_vertPosOffset;
 	
 		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0]);
 		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1]);

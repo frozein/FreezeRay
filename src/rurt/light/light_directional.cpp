@@ -7,12 +7,12 @@ namespace rurt
 {
 
 LightDirectional::LightDirectional(const vec3& dir, const vec3& intensity, float worldRadius) :
-	Light(true), m_dir(dir), m_intensity(intensity), m_worldRadius(worldRadius)
+	Light(true), m_dir(normalize(dir)), m_intensity(intensity), m_worldRadius(worldRadius)
 {
 
 }
 
-vec3 LightDirectional::sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
+vec3 LightDirectional::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	wiWorld = m_dir;
 	pdf = 1.0f;

@@ -72,8 +72,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 	vec3 light = vec3(0.0f);
 	vec3 mult = vec3(1.0f);
 
-	static int count = 0;
-	count++;
+	bool deltaBounce = false;
 
 	Ray curRay = cameraRay;
 	for(uint32_t i = 0; i < RURT_RAY_BOUNCE_LIMIT; i++)
@@ -81,15 +80,26 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 		IntersectionInfo hitInfo;
 		bool hit = m_scene->intersect(curRay, hitInfo);
 
-		if(!hit)
-		{
-			//TODO: add contribution from infinite area lights (environment maps)
-			//only do this for rays spawned from delta distribs
-			break;
-		}
-
 		//negate ray direction to get wo:
 		vec3 wo = -1.0f * curRay.direction();
+
+		//add emitted light if first bounce or delta bounce
+		if(i == 0 || deltaBounce)
+		{
+			if(hit)
+			{
+				if(hitInfo.light != nullptr)
+					light = light + mult * hitInfo.light->le(hitInfo, wo);
+			}
+			else
+			{
+				//TODO: add environment lights
+			}
+		}
+
+		//break if nothing hit
+		if(!hit)
+			break;
 
 		//add contribution from light sources
 		if(!hitInfo.material->bsdf_is_delta())
@@ -127,6 +137,10 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 			f = hitInfo.material->bsdf_f(hitInfo, wi, wo);
 		}
 
+		//break if pdf 0
+		if(pdf == 0.0f)
+			break;
+
 		//apply brdf to current color
 		float cosTheta = std::abs(dot(wi, hitInfo.worldNormal));
 		mult = mult * (f * cosTheta / pdf);
@@ -144,6 +158,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 		}
 
 		curRay = Ray(bouncePos, bounceDir);
+		deltaBounce = hitInfo.material->bsdf_is_delta();
 
 		//russian roulette to exit based on color:
 		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);
@@ -171,7 +186,7 @@ vec3 Renderer::uniform_sample_one_light(const IntersectionInfo& hitInfo, const v
 
 	//sample li:
 	//---------------
-	vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 	vec3 wi;
 	VisibilityTestInfo visInfo;
 	float pdf;
@@ -201,7 +216,14 @@ bool Renderer::trace_visibility_ray(const IntersectionInfo& initialHitInfo, cons
 	else
 		rayPos = rayPos - initialHitInfo.worldNormal * RURT_EPSILON;
 
-	Ray ray(rayPos, wi);
+	Ray ray;
+	if(visInfo.infinite)
+		ray = Ray(rayPos, wi);
+	else
+	{
+		vec3 toEnd = visInfo.endPos - rayPos;
+		ray = Ray(rayPos, toEnd);
+	}
 
 	IntersectionInfo hitInfo;
 	bool hit = m_scene->intersect(ray, hitInfo);
@@ -213,10 +235,10 @@ bool Renderer::trace_visibility_ray(const IntersectionInfo& initialHitInfo, cons
 		if(!hit)
 			return true;
 
-		float maxDist = distance(initialHitInfo.worldPos, visInfo.endPos);
+		float minDist = distance(initialHitInfo.worldPos, visInfo.endPos);
 		float dist = distance(initialHitInfo.worldPos, hitInfo.worldPos);
 
-		return dist > maxDist;
+		return (dist + RURT_EPSILON) > minDist;
 	}
 }
 

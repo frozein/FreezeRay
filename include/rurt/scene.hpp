@@ -39,6 +39,8 @@ private:
 	struct ObjectReferenceFull
 	{
 		std::shared_ptr<const Object> object;
+		std::shared_ptr<const Light> light;
+
 		mat4 transform;
 		mat4 transformNoTranslate;
 		mat4 invTransform;
@@ -47,6 +49,8 @@ private:
 	std::vector<ObjectReferenceFull> m_objects;
 
 	std::vector<std::shared_ptr<const Light>> m_lights;
+
+	void add_object_reference(const std::shared_ptr<const Object>& object, const std::shared_ptr<const Light>& light, const mat4& transform);
 };
 
 }; //namespace rurt

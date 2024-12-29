@@ -19,7 +19,7 @@ class LightSpotlight : public Light
 public:
 	LightSpotlight(const mat4& transform, const vec3& intensity, float width, float falloffStart);
 
-	vec3 sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
+	vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
 	vec3 power() const;
 
 private:

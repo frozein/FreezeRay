@@ -18,6 +18,7 @@
 #include "rurt/microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
 #include "rurt/light/light_directional.hpp"
 #include "rurt/light/light_point.hpp"
+#include "rurt/light/light_area.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -77,9 +78,14 @@ int main(int argc, char** argv)
 
 	std::vector<rurt::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
-	std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(1.0f));
-	std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
-	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1, light2};
+	//std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(1.0f));
+	//std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
+	
+	std::shared_ptr<const rurt::Mesh> lightMesh1 = rurt::Mesh::unit_square();
+	mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
+	std::shared_ptr<const rurt::LightArea> light1 = std::make_shared<rurt::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
+
+	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1};
 
 	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList, lightList);
 

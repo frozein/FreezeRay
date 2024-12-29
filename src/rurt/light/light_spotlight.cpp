@@ -13,7 +13,7 @@ LightSpotlight::LightSpotlight(const mat4& transform, const vec3& intensity, flo
 
 }
 
-vec3 LightSpotlight::sample_li(const IntersectionInfo& hitInfo, const vec2& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
+vec3 LightSpotlight::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	vec3 toLight = m_pos - hitInfo.worldPos;
 
@@ -31,7 +31,7 @@ vec3 LightSpotlight::sample_li(const IntersectionInfo& hitInfo, const vec2& u, v
        falloff = delta * delta * delta * delta;
 	}
 
-	wiWorld = toLight;
+	wiWorld = normalize(toLight);
 	pdf = 1.0f;
 	vis.infinite = false;
 	vis.endPos = m_pos;

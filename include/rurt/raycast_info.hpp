@@ -16,10 +16,12 @@ namespace rurt
 {
 
 class Material;
+class Light;
 
 struct IntersectionInfo
 {
 	std::shared_ptr<const Material> material;
+	std::shared_ptr<const Light> light;
 
 	vec3 worldPos;
 	vec3 objectPos;
