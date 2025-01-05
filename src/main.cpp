@@ -78,14 +78,14 @@ int main(int argc, char** argv)
 
 	std::vector<rurt::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
-	//std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(1.0f));
-	//std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.0f, 0.0f, 1.0f));
+	std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
+	std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
 	
-	std::shared_ptr<const rurt::Mesh> lightMesh1 = rurt::Mesh::unit_square();
-	mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
-	std::shared_ptr<const rurt::LightArea> light1 = std::make_shared<rurt::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
+	//std::shared_ptr<const rurt::Mesh> lightMesh1 = rurt::Mesh::unit_square();
+	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
+	//std::shared_ptr<const rurt::LightArea> light1 = std::make_shared<rurt::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
 
-	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1};
+	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1, light2};
 
 	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList, lightList);
 
@@ -98,7 +98,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 10);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 100);
 
 	//draw loop until rendering finished:
 	//---------------
