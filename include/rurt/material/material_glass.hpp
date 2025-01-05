@@ -8,10 +8,8 @@
 #define RURT_MATERIAL_GLASS_H
 
 #include "../material.hpp"
-#include "../bxdf/brdf_microfacet.hpp"
-#include "../bxdf/btdf_microfacet.hpp"
+#include "../texture.hpp"
 #include "../fresnel/fresnel_dielectric.hpp"
-#include "../microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
 
 //-------------------------------------------//
 
@@ -21,20 +19,21 @@ namespace rurt
 class MaterialGlass : public Material
 {
 public:
-	MaterialGlass(const std::string& name, const vec3& colorReflection, const vec3& colorTransmission, float roughnessU, float roughnessV);
+	MaterialGlass(const std::string& name, float eta, const std::shared_ptr<Texture<vec3>>& colorReflection, const std::shared_ptr<Texture<vec3>>& colorTransmission, 
+	const std::shared_ptr<Texture<float>>& roughnessX, const std::shared_ptr<Texture<float>>& roughnessY);
 
 	vec3 bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override;
 	float bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 
 private:
-	FresnelDielectric m_fresnel;
-	MicrofacetDistributionTrowbridgeReitz m_distribution;
-	BRDFMicrofacet m_brdf;
-	BTDFMicrofacet m_btdf;
+	float m_etaT;
+	std::shared_ptr<const Texture<vec3>> m_colorReflection;
+	std::shared_ptr<const Texture<vec3>> m_colorTransmission;
+	std::shared_ptr<const Texture<float>> m_roughnessX;
+	std::shared_ptr<const Texture<float>> m_roughnessY;
 
-	vec3 m_colorReflection;
-	vec3 m_colorTransmission;
+	FresnelDielectric m_fresnel;
 };
 
 }; //namespace rurt

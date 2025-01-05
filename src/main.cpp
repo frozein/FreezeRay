@@ -19,6 +19,8 @@
 #include "rurt/light/light_directional.hpp"
 #include "rurt/light/light_point.hpp"
 #include "rurt/light/light_area.hpp"
+#include "rurt/texture/texture_constant.hpp"
+#include "rurt/texture/texture_image.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -62,8 +64,11 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f));
-	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), vec3(1.0f, 0.0f, 0.0f));
+	std::shared_ptr<rurt::Texture<vec3>> tex1 = rurt::TextureImageLoader::vec3_from_file("assets/terratoy.png", rurt::TextureRepeatMode::CLAMP_TO_EDGE);
+	std::shared_ptr<rurt::Texture<vec3>> tex2 = std::make_shared<rurt::TextureConstant<vec3>>(vec3(1.0f, 0.0f, 0.0));
+
+	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), tex1);
+	std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), tex2);
 	//std::shared_ptr<const rurt::Material> material2 = std::make_shared<rurt::MaterialPlastic>("", vec3(0.0f), vec3(1.0f), 0.25f);
 
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
@@ -98,7 +103,7 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 100);
+	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 10);
 
 	//draw loop until rendering finished:
 	//---------------

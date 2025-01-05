@@ -1,12 +1,33 @@
 #include "rurt/material/material_metal.hpp"
 #include <unordered_map>
-
-#define ETA_I vec3(1.0f) //refractive index of air
+#include "rurt/bxdf/brdf_microfacet.hpp"
+#include "rurt/microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
+#include "rurt/fresnel/fresnel_conductor.hpp"
+#include "rurt/texture/texture_constant.hpp"
 
 //-------------------------------------------//
 
 namespace rurt
 {
+
+#define ETA_I vec3(1.0f) //refractive index of air
+
+#define MAKE_FRESNEL()                                  \
+	vec3 etaT = m_etaT->evaluate(hitInfo);             \
+	vec3 absorption = m_absorption->evaluate(hitInfo); \
+	FresnelConductor fresnel(ETA_I, etaT, absorption);
+
+#define MAKE_MICROFACET_DISTRIBUTION()                  \
+	float roughnessX = m_roughnessX->evaluate(hitInfo); \
+	float roughnessY = m_roughnessY->evaluate(hitInfo); \
+	MicrofacetDistributionTrowbridgeReitz distribution(roughnessX, roughnessY);
+
+#define MAKE_BRDF()                \
+	MAKE_FRESNEL()                 \
+	MAKE_MICROFACET_DISTRIBUTION() \
+	BRDFMicrofacet brdf = BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&fresnel));
+
+//-------------------------------------------//
 
 struct MetalParams
 {
@@ -29,18 +50,18 @@ const std::unordered_map<MetalType, const MetalParams> PARAMS = {
 
 //-------------------------------------------//
 
-MaterialMetal::MaterialMetal(const std::string& name, const vec3& eta, const vec3& absorption, float roughnessU, float roughnessV) :
-	Material(name, false, BXDFType::REFLECTION), m_fresnel(ETA_I, eta, absorption), m_distribution(roughnessU, roughnessV),
-	m_brdf(std::make_shared<MicrofacetDistributionTrowbridgeReitz>(m_distribution), std::make_shared<FresnelConductor>(m_fresnel))
+MaterialMetal::MaterialMetal(const std::string& name, const std::shared_ptr<Texture<vec3>>& eta, const std::shared_ptr<Texture<vec3>>& k, 
+                             const std::shared_ptr<Texture<float>>& roughnessU, const std::shared_ptr<Texture<float>>& roughnessV) :
+	Material(name, false, BXDFType::REFLECTION), m_etaT(eta), m_absorption(k), m_roughnessX(roughnessU), m_roughnessY(roughnessV)
 {
 
 }
 
-MaterialMetal::MaterialMetal(const std::string& name, const MetalType& type, float roughnessU, float roughnessV) :
-	Material(name, false, BXDFType::REFLECTION), m_fresnel(ETA_I, PARAMS.at(type).eta, PARAMS.at(type).absorption), m_distribution(roughnessU, roughnessV),
-	m_brdf(std::make_shared<MicrofacetDistributionTrowbridgeReitz>(m_distribution), std::make_shared<FresnelConductor>(m_fresnel))
+MaterialMetal::MaterialMetal(const std::string& name, const MetalType& type, const std::shared_ptr<Texture<float>>& roughnessU, const std::shared_ptr<Texture<float>>& roughnessV) :
+	Material(name, false, BXDFType::REFLECTION), m_etaT(std::make_shared<TextureConstant<vec3>>(PARAMS.at(type).eta)),
+	m_absorption(std::make_shared<TextureConstant<vec3>>(PARAMS.at(type).absorption)), m_roughnessX(roughnessU), m_roughnessY(roughnessV)
 {
-	
+
 }
 
 vec3 MaterialMetal::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
@@ -48,7 +69,8 @@ vec3 MaterialMetal::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld,
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
-	return m_brdf.f(wi, wo);
+	MAKE_BRDF();
+	return brdf.f(wi, wo);
 }
 
 vec3 MaterialMetal::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
@@ -56,7 +78,8 @@ vec3 MaterialMetal::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
 
-	vec3 f = m_brdf.sample_f(wi, wo, pdf);
+	MAKE_BRDF();
+	vec3 f = brdf.sample_f(wi, wo, pdf);
 
 	wiWorld = local_to_world(hitInfo.worldNormal, wi);
 	return f;
@@ -67,7 +90,8 @@ float MaterialMetal::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWor
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
-	return m_brdf.pdf(wi, wo);
+	MAKE_BRDF();
+	return brdf.pdf(wi, wo);
 }
 
 }; //namespace rurt

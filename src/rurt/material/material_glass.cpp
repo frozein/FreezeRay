@@ -1,19 +1,33 @@
 #include "rurt/material/material_glass.hpp"
 #include "rurt/globals.hpp"
-
-#define ETA_I 1.0f //refractive index of air
-#define ETA_T 1.5f //refractive index of glass
+#include "rurt/bxdf/brdf_microfacet.hpp"
+#include "rurt/bxdf/btdf_microfacet.hpp"
+#include "rurt/microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
 
 //-------------------------------------------//
 
 namespace rurt
 {
 
-MaterialGlass::MaterialGlass(const std::string& name, const vec3& colorReflection, const vec3& colorTransmission, float roughnessU, float roughnessV) : 
-	Material(name, false, BXDFType::BOTH), m_colorReflection(colorReflection), m_colorTransmission(colorTransmission), 
-	m_fresnel(ETA_I, ETA_T), m_distribution(roughnessU, roughnessV), 
-	m_brdf(std::make_shared<MicrofacetDistributionTrowbridgeReitz>(m_distribution), std::make_shared<FresnelDielectric>(m_fresnel)),
-	m_btdf(ETA_I, ETA_T, std::make_shared<MicrofacetDistributionTrowbridgeReitz>(m_distribution), std::make_shared<FresnelDielectric>(m_fresnel))
+#define ETA_I 1.0f //refractive index of air
+
+#define MAKE_MICROFACET_DISTRIBUTION()                  \
+	float roughnessX = m_roughnessX->evaluate(hitInfo); \
+	float roughnessY = m_roughnessY->evaluate(hitInfo); \
+	MicrofacetDistributionTrowbridgeReitz distribution(roughnessX, roughnessY);
+
+#define MAKE_BRDF() \
+	BRDFMicrofacet brdf = BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&m_fresnel));
+
+#define MAKE_BTDF() \
+	BTDFMicrofacet btdf(1.0f, m_etaT, std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&m_fresnel));		
+
+//-------------------------------------------//
+
+MaterialGlass::MaterialGlass(const std::string& name, float eta, const std::shared_ptr<Texture<vec3>>& colorReflection, const std::shared_ptr<Texture<vec3>>& colorTransmission, 
+                             const std::shared_ptr<Texture<float>>& roughnessX, const std::shared_ptr<Texture<float>>& roughnessY) : 
+	Material(name, false, BXDFType::BOTH), m_etaT(eta), m_colorReflection(colorReflection), m_colorTransmission(colorTransmission), 
+	m_roughnessX(roughnessX), m_roughnessY(roughnessY), m_fresnel(ETA_I, eta)
 {
 
 }
@@ -23,11 +37,19 @@ vec3 MaterialGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld,
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
+	MAKE_MICROFACET_DISTRIBUTION();
+
 	vec3 f;
 	if(dot(wi, wo) >= 0.0f) //reflection
-		f = m_colorReflection * m_brdf.f(wi, wo);
+	{
+		MAKE_BRDF();
+		f = m_colorReflection->evaluate(hitInfo) * brdf.f(wi, wo);
+	}
 	else //transmission
-		f = m_colorTransmission * m_btdf.f(wi, wo);
+	{
+		MAKE_BTDF();
+		f = m_colorReflection->evaluate(hitInfo) * btdf.f(wi, wo);
+	}
 
 	return f;
 }
@@ -39,23 +61,34 @@ vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld
     
 	vec3 f = vec3(0.0f);
 
+	MAKE_MICROFACET_DISTRIBUTION();
+
     if(u.x < 0.5f)
-        f = m_colorReflection * m_brdf.sample_f(wi, wo, pdf);
+	{
+		MAKE_BRDF();
+        f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, pdf);
+	}
 	else
 	{
 		bool entering = cos_theta(wo) > 0.0f;
 		float eta;
 		if(entering)
-			eta = ETA_I / ETA_T;
+			eta = ETA_I / m_etaT;
 		else
-			eta = ETA_T / ETA_I;
+			eta = m_etaT / ETA_I;
 
 		float cosThetaI = std::abs(cos_theta(wo));
         float sinTheta2T = eta * eta * (1.0f - cosThetaI * cosThetaI);
         if(sinTheta2T >= 1.0f) //total internal reflection
-            f = m_colorReflection * m_brdf.sample_f(wi, wo, pdf);
+		{
+			MAKE_BRDF();
+			f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, pdf);
+		}
 		else
-            f = m_colorTransmission * m_btdf.sample_f(wi, wo, pdf);
+		{
+			MAKE_BTDF();
+			f = m_colorReflection->evaluate(hitInfo) * btdf.sample_f(wi, wo, pdf);
+		}
     }
 
 	pdf /= 2.0f;
@@ -69,12 +102,20 @@ float MaterialGlass::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWor
 	vec3 wi, wo;
 	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
 
+	MAKE_MICROFACET_DISTRIBUTION();
+
 	float pdf;
 	if(dot(wi, wo) >= 0.0f) //reflection
-		pdf = m_brdf.pdf(wi, wo);
+	{
+		MAKE_BRDF();
+		pdf = brdf.pdf(wi, wo);
+	}
 	else //transmission
-		pdf = m_btdf.pdf(wi, wo);
-
+	{
+		MAKE_BTDF();
+		pdf = btdf.pdf(wi, wo);
+	}
+ 
 	return pdf / 2.0f;
 }
 

@@ -5,7 +5,7 @@
 namespace rurt
 {
 
-MaterialMirror::MaterialMirror(const std::string& name, const vec3& color) : 
+MaterialMirror::MaterialMirror(const std::string& name, const std::shared_ptr<Texture<vec3>>& color) : 
 	Material(name, true, BXDFType::REFLECTION), m_color(color), m_fresnel(vec3(1.0f)), 
 	m_brdf(std::make_shared<FresnelConstant>(m_fresnel))
 {
@@ -23,7 +23,7 @@ vec3 MaterialMirror::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorl
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
 
-	vec3 f = m_brdf.sample_f(wi, wo, pdf);
+	vec3 f = m_color->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, pdf);
 
 	wiWorld = local_to_world(hitInfo.worldNormal, wi);
 	return f;

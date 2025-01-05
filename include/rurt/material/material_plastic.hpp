@@ -7,10 +7,9 @@
 #define RURT_MATERIAL_PASTIC_H
 
 #include "../material.hpp"
+#include "../texture.hpp"
 #include "../bxdf/brdf_lambertian_diffuse.hpp"
-#include "../bxdf/brdf_microfacet.hpp"
-#include "../microfacet_distribution/microfacet_distribution_trowbridge_reitz.hpp"
-#include "../fresnel/fresnel_dielectric.hpp"
+#include "rurt/fresnel/fresnel_dielectric.hpp"
 
 //-------------------------------------------//
 
@@ -20,20 +19,20 @@ namespace rurt
 class MaterialPlastic : public Material
 {
 public:
-	MaterialPlastic(const std::string& name, const vec3& colorDiffuse, const vec3& colorSpecular, float roughness);
+	MaterialPlastic(const std::string& name, const std::shared_ptr<Texture<vec3>>& colorDiffuse, const std::shared_ptr<Texture<vec3>>& colorSpecular, 
+	                const std::shared_ptr<Texture<float>>& roughness);
 
 	vec3 bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override;
 	float bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
 
 private:
-	FresnelDielectric m_fresnel;
-	MicrofacetDistributionTrowbridgeReitz m_distribution;
-	BRDFLambertianDiffuse m_brdfDiffuse;
-	BRDFMicrofacet m_brdfSpecular;
+	std::shared_ptr<const Texture<vec3>> m_colorDiffuse;
+	std::shared_ptr<const Texture<vec3>> m_colorSpecular;
+	std::shared_ptr<const Texture<float>> m_roughness;
 
-	vec3 m_colorDiffuse;
-	vec3 m_colorSpecular;
+	FresnelDielectric m_fresnel;
+	BRDFLambertianDiffuse m_brdfDiffuse;
 };
 
 }; //namespace rurt

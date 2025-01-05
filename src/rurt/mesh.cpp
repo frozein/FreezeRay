@@ -130,13 +130,13 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 	for(uint32_t i = 0; i < m_numTris; i++)
 	{
 		uint32_t triIdx = i * 3;
-		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride + m_vertPosOffset;
-		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride + m_vertPosOffset;
-		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride + m_vertPosOffset;
+		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
+		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
+		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
 	
-		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0]);
-		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1]);
-		const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2]);
+		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertPosOffset]);
+		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertPosOffset]);
+		const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertPosOffset]);
 
 		float t;
 		float u, v;
@@ -324,9 +324,9 @@ void Mesh::setup_strides_offsets()
 		m_vertNormalOffset = 0;
 
 		if((m_vertAttribs & VERTEX_ATTRIB_POSITION) != 0)
-			m_vertUvOffset += 3;
+			m_vertNormalOffset += 3;
 		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
-			m_vertUvOffset += 2;
+			m_vertNormalOffset += 2;
 	}
 }
 
@@ -440,12 +440,12 @@ std::shared_ptr<const Mesh> Mesh::gen_unit_cube()
 
 std::shared_ptr<const Mesh> Mesh::gen_unit_square()
 {
-	float vertices[] = {
-		-0.5f,  0.0f,  0.5f,
-		 0.5f,  0.0f,  0.5f,
-		 0.5f,  0.0f, -0.5f,
-		-0.5f,  0.0f, -0.5f
-	};
+    float vertices[] = {
+        -0.5f,  0.0f, -0.5f, 0.0f, 0.0f,
+        -0.5f,  0.0f,  0.5f, 0.0f, 1.0f,
+         0.5f,  0.0f,  0.5f, 1.0f, 1.0f,
+         0.5f,  0.0f, -0.5f, 1.0f, 0.0f
+    };
 	uint32_t numVertices = sizeof(vertices) / sizeof(float);
 	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
 	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
@@ -458,7 +458,7 @@ std::shared_ptr<const Mesh> Mesh::gen_unit_square()
 	std::unique_ptr<uint32_t[]> indicesUnique = std::unique_ptr<uint32_t[]>(new uint32_t[numIndices]);
 	memcpy(indicesUnique.get(), indices, sizeof(indices));
 
-	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 3, 0);
+	return std::make_shared<Mesh>(VERTEX_ATTRIB_POSITION | VERTEX_ATTRIB_UV, numIndices / 3, std::move(indicesUnique), std::move(verticesUnique), "", 5, 0, 3);
 }
 
 std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 

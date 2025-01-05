@@ -37,8 +37,8 @@ T TextureImage<T>::evaluate(const IntersectionInfo& hitInfo) const
 
 	uint32_t x = (uint32_t)(uv.x * m_width);
 	uint32_t y = (uint32_t)(uv.y * m_height);
-	x = x >= m_width  ? m_width  : x;
-	y = y >= m_height ? m_height : y;
+	x = x >= m_width  ? (m_width  - 1) : x;
+	y = y >= m_height ? (m_height - 1) : y;
 
 	uint32_t idx = x + m_width * y;
 	return m_image[idx];
