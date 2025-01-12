@@ -20,7 +20,7 @@
 #include "rurt/light/light_point.hpp"
 #include "rurt/light/light_area.hpp"
 #include "rurt/texture/texture_constant.hpp"
-#include "rurt/texture/texture_image_vec3.hpp"
+#include "rurt/texture/texture_image.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<rurt::Texture<vec3>> tex1 = rurt::TextureImageVec3::from_file("assets/terratoy.png", rurt::TextureRepeatMode::CLAMP_TO_EDGE);
+	std::shared_ptr<rurt::Texture<vec3>> tex1 = rurt::TextureImage<vec3, uint32_t>::from_file("assets/terratoy.png", rurt::TextureRepeatMode::CLAMP_TO_EDGE);
 	std::shared_ptr<rurt::Texture<vec3>> tex2 = std::make_shared<rurt::TextureConstant<vec3>>(vec3(1.0f, 0.0f, 0.0));
 
 	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), tex1);
@@ -74,14 +74,14 @@ int main(int argc, char** argv)
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList1 = {material1};
 	std::shared_ptr<const rurt::Object> object1 = std::make_shared<rurt::Object>(meshList1, materialList1);
-	mat4 objectTransform1 = translate(vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(10.0f, 1.0f, 10.0f));
+	mat4 objectTransform1 = translate(vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(5.0f, 1.0f, 5.0f));
 	
 	std::vector<std::shared_ptr<const rurt::Mesh>> meshList2 = {mesh2};
 	std::vector<std::shared_ptr<const rurt::Material>> materialList2 = {material2};
 	std::shared_ptr<const rurt::Object> object2 = std::make_shared<rurt::Object>(meshList2, materialList2);
 	mat4 objectTransform2 = mat4_identity();
 
-	std::vector<rurt::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
+	std::vector<rurt::ObjectReference> objectList = {{object1, objectTransform1}};
 
 	std::shared_ptr<const rurt::LightDirectional> light1 = std::make_shared<rurt::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
 	std::shared_ptr<const rurt::LightPoint> light2 = std::make_shared<rurt::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
@@ -90,15 +90,15 @@ int main(int argc, char** argv)
 	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
 	//std::shared_ptr<const rurt::LightArea> light1 = std::make_shared<rurt::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
 
-	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1, light2};
+	std::vector<std::shared_ptr<const rurt::Light>> lightList = {light1};
 
 	std::shared_ptr<const rurt::Scene> scene = std::make_shared<rurt::Scene>(objectList, lightList);
 
 	//create renderer:
 	//---------------
 	std::shared_ptr<const rurt::Camera> camera = std::make_shared<rurt::Camera>(
-		vec3(0.0f, 0.0f, 3.0f), 
-		normalize(vec3(0.0f, 0.0f, -1.0f)), 
+		vec3(0.0f, 3.0f, 0.0f), 
+		normalize(vec3(0.0f, -100.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
