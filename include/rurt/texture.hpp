@@ -14,6 +14,12 @@
 namespace rurt
 {
 
+enum class TextureRepeatMode
+{
+	REPEAT,
+	CLAMP_TO_EDGE
+};
+
 template<typename T>
 class Texture
 {
