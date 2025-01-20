@@ -2,6 +2,7 @@
 
 #include "rurt/ray.hpp"
 #include "rurt/globals.hpp"
+#include <math.h>
 
 #define RURT_RAY_BOUNCE_LIMIT 50
 
@@ -38,6 +39,10 @@ void Renderer::draw_scanline(uint32_t y, uint32_t* buf)
 		//generate ray for current pixel:
 		//---------------
 		Ray cameraRay = get_camera_ray(x, y);
+		Ray cameraRayDifferentialX = get_camera_ray(x + 1, y);
+		Ray cameraRayDifferentialY = get_camera_ray(x, y + 1);
+
+		cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
 
 		//bounce ray until hit sky or bounce limit reached:
 		//---------------

@@ -12,6 +12,7 @@
 #include <vector>
 #include <unordered_map>
 #include "ray.hpp"
+#include "raycast_info.hpp"
 
 //-------------------------------------------//
 
@@ -45,7 +46,7 @@ public:
 	vec2 get_vert_uv_at(uint32_t idx) const;
 	vec3 get_vert_normal_at(uint32_t idx) const;
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal) const;
+	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const;
 
 	//-------------------------------------------//
 
@@ -70,6 +71,7 @@ private:
 	std::unique_ptr<float[]> m_verts;
 
 	bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const;
+	void intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const;
 
 	void setup_strides_offsets();
 

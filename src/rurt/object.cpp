@@ -35,7 +35,7 @@ Object::Object(const std::vector<ObjectComponent>& components) :
 
 }
 
-bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, std::shared_ptr<const Material>& material) const
+bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs, std::shared_ptr<const Material>& material) const
 {
 	//loop over every mesh, check for intersection:
 	//---------------
@@ -47,13 +47,15 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, std:
 		float t;
 		vec2 newUV;
 		vec3 newNormal;
-		if(m_components[i].mesh->intersect(ray, t, newUV, newNormal) && t < minT)
+		IntersectionInfo::Derivatives newDerivs;
+		if(m_components[i].mesh->intersect(ray, t, newUV, newNormal, newDerivs) && t < minT)
 		{
 			hit |= true;
 			minT = t;
 			uv = newUV;
 			normal = newNormal;
 			material = m_components[i].material;
+			derivs = newDerivs;
 		}
 	}
 

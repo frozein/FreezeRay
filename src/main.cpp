@@ -64,7 +64,7 @@ int main(int argc, char** argv)
 	std::shared_ptr<const rurt::Mesh> mesh1 = rurt::Mesh::unit_square();
 	std::shared_ptr<const rurt::Mesh> mesh2 = rurt::Mesh::unit_sphere(2, true);
 
-	std::shared_ptr<rurt::Texture<vec3>> tex1 = rurt::TextureImage<vec3, uint32_t>::from_file("assets/terratoy.png", rurt::TextureRepeatMode::CLAMP_TO_EDGE);
+	std::shared_ptr<rurt::Texture<vec3>> tex1 = rurt::TextureImage<vec3, uint32_t>::from_file("C:\\Users\\danie\\Pictures\\Saved Pictures\\Memes\\1070087967294631976-1bc48673-3146-4107-864d-a3eef69934ac-571447.png", rurt::TextureRepeatMode::CLAMP_TO_EDGE);
 	std::shared_ptr<rurt::Texture<vec3>> tex2 = std::make_shared<rurt::TextureConstant<vec3>>(vec3(1.0f, 0.0f, 0.0));
 
 	std::shared_ptr<const rurt::Material> material1 = std::make_shared<rurt::MaterialSingleBXDF>("", std::make_shared<rurt::BRDFLambertianDiffuse>(), tex1);
@@ -97,8 +97,8 @@ int main(int argc, char** argv)
 	//create renderer:
 	//---------------
 	std::shared_ptr<const rurt::Camera> camera = std::make_shared<rurt::Camera>(
-		vec3(0.0f, 3.0f, 0.0f), 
-		normalize(vec3(0.0f, -100.0f, -1.0f)), 
+		vec3(0.0f, -0.5f, 3.0f), 
+		normalize(vec3(0.0f, 0.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H

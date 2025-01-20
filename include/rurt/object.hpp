@@ -27,7 +27,7 @@ public:
 	Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std::vector<std::shared_ptr<const Material>>& materials);
 	Object(const std::vector<ObjectComponent>& components);
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, std::shared_ptr<const Material>& material) const;
+	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs, std::shared_ptr<const Material>& material) const;
 
 private:
 	std::vector<ObjectComponent> m_components;

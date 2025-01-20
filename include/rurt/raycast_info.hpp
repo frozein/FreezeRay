@@ -30,6 +30,14 @@ struct IntersectionInfo
 	vec3 objectNormal;
 	
 	vec2 uv;
+
+	struct Derivatives
+	{
+		vec3 dpdx;
+		vec3 dpdy;
+		vec2 duvdx;
+		vec2 duvdy;
+	} derivatives;
 };
 
 struct VisibilityTestInfo

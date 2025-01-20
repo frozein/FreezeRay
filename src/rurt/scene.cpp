@@ -66,6 +66,7 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 	vec2 minUV;
 	vec3 minWorldNormal;
 	vec3 minObjectNormal;
+	IntersectionInfo::Derivatives minDerivs;
 	std::shared_ptr<const Material> minMaterial;
 	std::shared_ptr<const Light> minLight;
 
@@ -78,8 +79,9 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 		float t;
 		vec2 uv;
 		vec3 objectNormal;
+		IntersectionInfo::Derivatives derivs;
 		std::shared_ptr<const Material> material;
-		if(m_objects[i].object->intersect(objectRay, t, uv, objectNormal, material))
+		if(m_objects[i].object->intersect(objectRay, t, uv, objectNormal, derivs, material))
 		{
 			hit |= true;
 
@@ -97,6 +99,7 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 				minUV = uv;
 				minWorldNormal = (m_objects[i].transformNoTranslate * vec4(objectNormal, 1.0)).xyz();
 				minObjectNormal = objectNormal;
+				minDerivs = derivs;
 				minMaterial = material;
 				minLight = m_objects[i].light;
 			}
@@ -123,6 +126,8 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 		hitInfo.objectNormal = vec3(0.0f);
 		hitInfo.uv = vec2(0.0f);
 	}
+
+	hitInfo.derivatives = minDerivs;
 
 	return hit;
 }

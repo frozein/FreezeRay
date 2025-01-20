@@ -117,16 +117,24 @@ vec3 Mesh::get_vert_normal_at(uint32_t idx) const
 	return *reinterpret_cast<const vec3*>(&m_verts.get()[idx * m_vertStride + m_vertNormalOffset]);
 }
 
-bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
+bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const
 {
 	if(!m_valid)
 		return false;
 
+	//declare attributes belonging to closest vert:
+	//---------------
 	float* verts = m_verts.get();
 	
 	bool hit = false;
-	minT = INFINITY;
 
+	minT = INFINITY;
+	uint32_t minIdx0, minIdx1, minIdx2;
+	vec3 minV0, minV1, minV2;
+	float minB0, minB1;
+
+	//loop over all verts, check for closest hit:
+	//---------------
 	for(uint32_t i = 0; i < m_numTris; i++)
 	{
 		uint32_t triIdx = i * 3;
@@ -139,39 +147,92 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal) const
 		const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertPosOffset]);
 
 		float t;
-		float u, v;
-		if(intersect_triangle(ray, v0, v1, v2, t, u, v) && t < minT)
+		float b0, b1; //barycentric coordinates
+		if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < minT)
 		{
 			hit |= true;
+
 			minT = t;
-
-			float w = 1.0f - u - v;
-
-			if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
-			{
-				const vec2& uv0 = *reinterpret_cast<const vec2*>(&verts[idx0 + m_vertUvOffset]);
-				const vec2& uv1 = *reinterpret_cast<const vec2*>(&verts[idx1 + m_vertUvOffset]);
-				const vec2& uv2 = *reinterpret_cast<const vec2*>(&verts[idx2 + m_vertUvOffset]);
-
-				uv = uv0 * w + uv1 * u + uv2 * v;
-			}
-			else
-				uv = vec2(0.0f);
-
-			if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
-			{
-				const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertNormalOffset]);
-				const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertNormalOffset]);
-				const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertNormalOffset]);
-
-				normal = normal0 * w + normal1 * u + normal2 * v;
-			}
-			else
-				normal = cross(v1 - v0, v2 - v0); //calculate flat-shaded normal
+			minIdx0 = idx0;
+			minIdx1 = idx1;
+			minIdx2 = idx2;
+			minV0 = v0;
+			minV1 = v1;
+			minV2 = v2;
+			minB0 = b0;
+			minB1 = b1;
 		}
 	}
 
-	return hit;
+	//return early if not hit:
+	//---------------
+	if(!hit)
+		return false;
+
+	//get attributes:
+	//---------------
+	float b2 = 1.0f - minB0 - minB1;
+
+	const vec2 *uv0, *uv1, *uv2;
+	if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
+	{
+		uv0 = reinterpret_cast<const vec2*>(&verts[minIdx0 + m_vertUvOffset]);
+		uv1 = reinterpret_cast<const vec2*>(&verts[minIdx1 + m_vertUvOffset]);
+		uv2 = reinterpret_cast<const vec2*>(&verts[minIdx2 + m_vertUvOffset]);
+
+		uv = *uv0 * b2 + *uv1 * minB0 + *uv2 * minB1;
+	}
+	else
+		uv = vec2(0.0f);
+
+	if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
+	{
+		const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[minIdx0 + m_vertNormalOffset]);
+		const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[minIdx1 + m_vertNormalOffset]);
+		const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[minIdx2 + m_vertNormalOffset]);
+
+		normal = normal0 * b2 + normal1 * minB0 + normal2 * minB1;
+	}
+	else
+		normal = cross(minV1 - minV0, minV2 - minV0); //calculate flat-shaded normal
+
+	//calculate derivatives:
+	//---------------
+	if(ray.has_differentials())
+	{
+		vec3 p = ray.at(minT);
+
+		float tx;
+		float b0x, b1x;
+		intersect_triangle_no_bounds_check(ray.differential_x(), minV0, minV1, minV2, tx, b0x, b1x);
+		vec3 px = ray.differential_x().at(tx);
+
+		float ty;
+		float b0y, b1y;
+		intersect_triangle_no_bounds_check(ray.differential_y(), minV0, minV1, minV2, ty, b0y, b1y);
+		vec3 py = ray.differential_y().at(ty);
+
+		derivs.dpdx = px - p;
+		derivs.dpdy = py - p;
+
+		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
+		{
+			float b2x = 1.0f - b0x - b1x;
+			derivs.duvdx = (*uv0 * b2x + *uv1 * b0x + *uv2 * b1x) - uv;
+
+			float b2y = 1.0f - b0y - b1y;
+			derivs.duvdy = (*uv0 * b2y + *uv1 * b0y + *uv2 * b1y) - uv;
+		}
+		else
+		{
+			derivs.duvdx = vec2(0.0f);
+			derivs.duvdy = vec2(0.0f);
+		}
+	}
+	else
+		derivs = {0};
+
+	return true;
 }
 
 //-------------------------------------------//
@@ -274,6 +335,24 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 
 	t = dot(v0v2, qvec) * invDet;
 	return t > RURT_EPSILON;
+}
+
+void Mesh::intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const
+{
+	vec3 v0v1 = v1 - v0;
+	vec3 v0v2 = v2 - v0;
+	vec3 pvec = cross(ray.direction(), v0v2);
+	float det = dot(v0v1, pvec);
+
+	float invDet = 1.0f / det;
+
+	vec3 tvec = ray.origin() - v0;
+	u = dot(tvec, pvec) * invDet;
+
+	vec3 qvec = cross(tvec, v0v1);
+	v = dot(ray.direction(), qvec) * invDet;
+
+	t = dot(v0v2, qvec) * invDet;
 }
 
 void Mesh::setup_strides_offsets()
