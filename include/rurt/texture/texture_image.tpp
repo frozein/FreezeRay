@@ -3,6 +3,7 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "rurt/globals.hpp"
+#include <math.h>
 
 //-------------------------------------------//
 
@@ -10,45 +11,87 @@ namespace rurt
 {
 
 template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::unique_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode) :
-	m_width(width), m_height(height), m_image(std::move(image)), m_repeatMode(repeatMode)
+TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::unique_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode) : 
+	m_repeatMode(repeatMode)
 {
-	auto test = resize_to_power_of_2(width, height, m_image.get(), repeatMode);
-	m_width = test.width;
-	m_height = test.height;
-	m_image = std::unique_ptr<Tmemory[]>(test.image);
+	//validate input:
+	//---------------
+	if(width == 0 || height == 0)
+		throw std::invalid_argument("dimensions cannot be 0");
+
+	//determine if sizes are power of 2, resize if not:
+	//---------------
+	bool isPowerOf2 = true;
+
+	uint32_t widthTemp = width;
+	while(widthTemp != 1)
+	{
+		isPowerOf2 = isPowerOf2 || (width & 1);
+		widthTemp >>= 1;
+	}
+
+	uint32_t heightTemp = height;
+	while(heightTemp != 1)
+	{
+		isPowerOf2 = isPowerOf2 || (height & 1);
+		heightTemp >>= 1;
+	}
+
+	Image baseImage;
+	if(isPowerOf2)
+		baseImage = resize_to_power_of_2(width, height, image.get(), repeatMode);
+	else
+	{
+		baseImage.width = width;
+		baseImage.height = height;
+		baseImage.image = std::move(image);
+	}
+
+	m_mipPyramid.push_back(std::move(baseImage));
+
+	//construct mip pyramid:
+	//---------------
+	uint32_t maxRes = std::max(baseImage.width, baseImage.height);
+	uint32_t numLevels = 1;
+	while(maxRes != 1)
+	{
+		maxRes >>= 1;
+		numLevels++;
+	}
+
+	for(uint32_t i = 1; i < numLevels; i++)
+	{
+		uint32_t levelWidth  = std::max(1u, m_mipPyramid[i - 1].width  / 2);
+		uint32_t levelHeight = std::max(1u, m_mipPyramid[i - 1].height / 2);
+
+		std::unique_ptr<Tmemory[]> levelImage = std::unique_ptr<Tmemory[]>(new Tmemory[levelWidth * levelHeight]);
+
+		for(uint32_t y = 0; y < levelHeight; y++)
+		for(uint32_t x = 0; x < levelWidth; x++)
+		{
+			T sample = (
+				get_texel(i - 1, 2 * x, 2 * y) + get_texel(i - 1, 2 * x + 1, 2 * y) +
+				get_texel(i - 1, 2 * x, 2 * y + 1) + get_texel(i - 1, 2 * x + 1, 2 * y + 1)
+			) / 4.0f;
+
+			convert_to_texture_memory(sample, levelImage[x + levelWidth * y]);
+
+		}
+		
+		m_mipPyramid.push_back({ levelWidth, levelHeight, std::move(levelImage) });
+	}
 }
 
 template<typename T, typename Tmemory>
 T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
 {
-	vec2 uv = hitInfo.uv;
-	switch(m_repeatMode)
-	{
-	case TextureRepeatMode::REPEAT:
-		uv.x = fmodf(uv.x, 1.0f);
-		uv.y = fmodf(uv.y, 1.0f);
-		break;
-	case TextureRepeatMode::CLAMP_TO_EDGE:
-		uv.x = std::min(std::max(uv.x, 0.0f), 1.0f);
-		uv.y = std::min(std::max(uv.y, 0.0f), 1.0f);
-		break;
-	default:
-		throw std::invalid_argument("invalid repeat mode");
-	}
 
 	//TODO: add trilinear interpolation
 
-	uint32_t x = (uint32_t)(uv.x * m_width);
-	uint32_t y = (uint32_t)(uv.y * m_height);
-	x = x >= m_width  ? (m_width  - 1) : x;
-	y = y >= m_height ? (m_height - 1) : y;
+	uint32_t x = (uint32_t)(hitInfo.uv.x * m_mipPyramid[0].width);
+	uint32_t y = (uint32_t)(hitInfo.uv.y * m_mipPyramid[0].height);
 
-	uint32_t idx = x + m_width * y;
-
-	T val;
-	convert_from_texture_memory(m_image[idx], val);
-	return val;
+	return get_texel(0, x, y);
 }
 
 template<typename T, typename Tmemory>
@@ -71,8 +114,37 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 	return std::make_shared<TextureImage<T, Tmemory>>((uint32_t)width, (uint32_t)height, std::move(image), repeatMode);
 }
 
+//-------------------------------------------//
+
 template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::ResizedImage TextureImage<T, Tmemory>::resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode)
+inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, uint32_t u, uint32_t v) const
+{
+	const Image& image = m_mipPyramid[level];
+
+	switch(m_repeatMode)
+	{
+	case TextureRepeatMode::REPEAT:
+		u %= image.width;
+		v %= image.height;
+		break;
+	case TextureRepeatMode::CLAMP_TO_EDGE:
+		u = std::min(u, image.width  - 1);
+		v = std::min(v, image.height - 1);
+		break;
+	default:
+		throw std::invalid_argument("invalid repeat mode");
+	}
+
+	T sample;
+	convert_from_texture_memory(image.image[u + image.width * v], sample);
+
+	return sample;
+}
+
+//-------------------------------------------//
+
+template<typename T, typename Tmemory>
+TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode)
 {
 	//compute power-of-2 dims:
 	//---------------
@@ -163,7 +235,7 @@ TextureImage<T, Tmemory>::ResizedImage TextureImage<T, Tmemory>::resize_to_power
 	//cleanup + return:
 	//---------------
 	delete resampledX;
-	return { newWidth, newHeight, resampledY };
+	return { newWidth, newHeight, std::unique_ptr<const Tmemory[]>(resampledY) };
 }
 
 template<typename T, typename Tmemory>

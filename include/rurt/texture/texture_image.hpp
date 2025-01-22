@@ -25,21 +25,23 @@ public:
 	static std::shared_ptr<TextureImage<T, Tmemory>> from_file(const std::string& path, TextureRepeatMode repeatMode);
 
 private:
-	struct ResizedImage
+	struct Image
 	{
 		uint32_t width;
 		uint32_t height;
-		Tmemory* image;
+		std::unique_ptr<const Tmemory[]> image;
 	};
-	static ResizedImage resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode);
+
+	std::vector<Image> m_mipPyramid;
+	TextureRepeatMode m_repeatMode;
+
+	//-------------------------------------------//
+
+	inline T get_texel(uint32_t level, uint32_t u, uint32_t v) const;
+
+	static Image resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode);
 	static std::pair<std::unique_ptr<int32_t[]>, std::unique_ptr<float[]>> compute_resampling_weights(uint32_t oldSize, uint32_t newSize);
 	static float lanczos_filter(float x);
-
-	uint32_t m_width;
-	uint32_t m_height;
-	std::unique_ptr<const Tmemory[]> m_image;
-
-	TextureRepeatMode m_repeatMode;
 };
 
 inline void convert_from_texture_memory(uint32_t mem, vec3& val);
