@@ -38,6 +38,7 @@ private:
 	//-------------------------------------------//
 
 	inline T get_texel(uint32_t level, uint32_t u, uint32_t v) const;
+	inline T bilinear(uint32_t level, const vec2& uv) const;
 
 	static Image resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode);
 	static std::pair<std::unique_ptr<int32_t[]>, std::unique_ptr<float[]>> compute_resampling_weights(uint32_t oldSize, uint32_t newSize);

@@ -85,13 +85,26 @@ TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::uni
 template<typename T, typename Tmemory>
 T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
 {
+	//TODO: anisotropic sampling
 
-	//TODO: add trilinear interpolation
+	float width = std::max(
+		std::max(std::abs(hitInfo.derivatives.duvdx.x), std::abs(hitInfo.derivatives.duvdx.y)),
+		std::max(std::abs(hitInfo.derivatives.duvdy.x), std::abs(hitInfo.derivatives.duvdy.y))
+	);
 
-	uint32_t x = (uint32_t)(hitInfo.uv.x * m_mipPyramid[0].width);
-	uint32_t y = (uint32_t)(hitInfo.uv.y * m_mipPyramid[0].height);
+	float level = m_mipPyramid.size() - 1 + std::log2f(std::max(width, 1e-10f));
 
-	return get_texel(0, x, y);
+	if(level < 0.0f)
+		return bilinear(0, hitInfo.uv);
+	else if(level >= m_mipPyramid.size() - 1)
+		return get_texel((uint32_t)m_mipPyramid.size() - 1, 0, 0);
+	else
+	{
+		uint32_t level0 = (uint32_t)level;
+		float dl = level - level0;
+
+		return (1.0f - dl) * bilinear(level0, hitInfo.uv) + dl * bilinear(level0 + 1, hitInfo.uv);
+	}
 }
 
 template<typename T, typename Tmemory>
@@ -139,6 +152,22 @@ inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, uint32_t u, uint32_
 	convert_from_texture_memory(image.image[u + image.width * v], sample);
 
 	return sample;
+}
+
+template<typename T, typename Tmemory>
+inline T TextureImage<T, Tmemory>::bilinear(uint32_t level, const vec2& uv) const
+{
+	float u = uv.x * m_mipPyramid[level].width  - 0.5f;
+	float v = uv.y * m_mipPyramid[level].height - 0.5f;
+
+	uint32_t u0 = (uint32_t)u;
+	uint32_t v0 = (uint32_t)v;
+
+	float du = u - u0;
+	float dv = v - v0;
+
+	return (1 - du) * ((1 - dv) * get_texel(level, u0    , v0) + dv * get_texel(level, u0    , v0 + 1)) +
+	            du  * ((1 - dv) * get_texel(level, u0 + 1, v0) + dv * get_texel(level, u0 + 1, v0 + 1));
 }
 
 //-------------------------------------------//
