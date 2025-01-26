@@ -17,25 +17,30 @@ template<typename T, typename Tmemory>
 class TextureImage : public Texture<T>
 {
 public:
-	TextureImage(uint32_t width, uint32_t height, std::unique_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode);
+	TextureImage(uint32_t width, uint32_t height, std::shared_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode);
 
 	T evaluate(const IntersectionInfo& hitInfo) const override;
 
 	//loads sizeof(Tmemory) components from an image using stb_image, 1 byte-per-component
 	static std::shared_ptr<TextureImage<T, Tmemory>> from_file(const std::string& path, TextureRepeatMode repeatMode);
+	//creates new texture image sharing memory from the old one, but with a different type
+	template<typename Tother>
+	static std::shared_ptr<TextureImage<T, Tmemory>> from_texture_image(const std::shared_ptr<TextureImage<Tother, Tmemory>>& image);
 
 private:
 	struct Image
 	{
 		uint32_t width;
 		uint32_t height;
-		std::unique_ptr<const Tmemory[]> image;
+		std::shared_ptr<const Tmemory[]> image;
 	};
 
 	std::vector<Image> m_mipPyramid;
 	TextureRepeatMode m_repeatMode;
 
 	//-------------------------------------------//
+
+	TextureImage(const std::vector<Image>& mipPyramid, TextureRepeatMode repeatMode);
 
 	inline T get_texel(uint32_t level, uint32_t u, uint32_t v) const;
 	inline T bilinear(uint32_t level, const vec2& uv) const;
