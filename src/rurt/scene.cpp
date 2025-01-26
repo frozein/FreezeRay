@@ -19,7 +19,7 @@ public:
 		return vec3(0.0f); 
 	}
 
-	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const override 
+	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const override 
 	{
 		wiWorld = hitInfo.worldNormal;
 		pdf = 0.0f;

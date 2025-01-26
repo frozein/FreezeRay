@@ -28,6 +28,45 @@ float MicrofacetDistributionBeckmann::distribution(const vec3& w) const
 	return numer / denom;
 }
 
+vec3 MicrofacetDistributionBeckmann::sample_distribution(const vec3& w, const vec2& u) const
+{
+	float tanTheta2; 
+	float phi;
+
+	if(m_alphaX == m_alphaY) 
+	{
+		float logSample = std::log(std::max(1 - u.x, 1e-10f));
+		
+		tanTheta2 = -m_alphaX * m_alphaX * logSample;
+		phi = u.y * RURT_2_PI;
+	} 
+	else 
+	{
+		float logSample = std::log(std::max(1 - u.x, 1e-10f));
+		
+		phi = std::atan(m_alphaY / m_alphaX * std::tan(RURT_2_PI * u.y + 0.5f * RURT_PI));
+		if(u.y > 0.5f) 
+			phi += RURT_PI;
+		
+		float sinPhi = std::sin(phi);
+		float cosPhi = std::cos(phi);
+
+		float alphaX2 = m_alphaX * m_alphaX;
+		float alphaY2 = m_alphaY * m_alphaY;
+		
+		tanTheta2 = -logSample / (cosPhi * cosPhi / alphaX2 + sinPhi * sinPhi / alphaY2);
+	}
+
+	float cosTheta = 1.0f / std::sqrt(1.0f + tanTheta2);
+	float sinTheta = std::sqrtf(std::max(0.0f, 1.0f - cosTheta * cosTheta));
+
+	vec3 wh = vec3(sinTheta * std::cos(phi), cosTheta, sinTheta * std::sin(phi));
+	if(!same_hemisphere(w, wh)) 
+		wh = -1.0f * wh;
+	
+	return wh;
+}
+
 float MicrofacetDistributionBeckmann::invisible_masked_proportion(const vec3& w) const
 {
 	float absTanTheta = std::abs(tan_theta(w));

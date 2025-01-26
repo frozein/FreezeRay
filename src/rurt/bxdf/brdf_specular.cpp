@@ -18,7 +18,7 @@ vec3 BRDFSpecular::f(const vec3& wi, const vec3& wo) const
 	return vec3(0.0f);
 }
 
-vec3 BRDFSpecular::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BRDFSpecular::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
 	//compute specular reflection direction:
 	//---------------

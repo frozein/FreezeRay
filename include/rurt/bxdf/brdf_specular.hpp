@@ -20,7 +20,7 @@ public:
 	BRDFSpecular(std::shared_ptr<const Fresnel> fresnel);
 
 	vec3 f(const vec3& wi, const vec3& wo) const override;
-	vec3 sample_f(vec3& wi, const vec3& wo, float& pdf) const override;
+	vec3 sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdf) const override;
 	float pdf(const vec3& wi, const vec3& wo) const override;
 
 private:

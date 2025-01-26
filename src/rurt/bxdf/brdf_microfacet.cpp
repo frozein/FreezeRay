@@ -18,7 +18,7 @@ vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 	float cosThetaI = std::abs(cos_theta(wi));
     vec3 wh = wi + wo;
 
-	if(cosThetaI == 0.0f || cosThetaO == 0.0f || (wh.x == 0.0f && wh.y == 0.0f && wh.z == 0.0f))
+	if(cosThetaI == 0.0f || cosThetaO == 0.0f || wh == vec3(0.0f))
 		return vec3(0.0f);
 
     wh = normalize(wh);
@@ -29,13 +29,21 @@ vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 		   (4.0f * cosThetaI * cosThetaO);
 }
 
-vec3 BRDFMicrofacet::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BRDFMicrofacet::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
-	//TODO
+	if(wo.y < 0.0f)
+		return vec3(0.0f);
 
-	wi = RURT_UP_DIR;
-	pdfVal = 0.0f;
-	return vec3(0.0f);
+	vec3 wh = m_distribution->sample_distribution(wo, u);
+	if(dot(wo, wh) < 0.0f)
+		return vec3(0.0f);
+
+	wi = -1.0f * wo + 2.0f * dot(wo, wh) * wh;
+	if(!same_hemisphere(wo, wi))
+		return vec3(0.0f);
+
+	pdfVal = m_distribution->pdf(wo, wh) / (4.0f * dot(wo, wh));
+	return f(wi, wo);
 }
 
 float BRDFMicrofacet::pdf(const vec3& wi, const vec3& wo) const

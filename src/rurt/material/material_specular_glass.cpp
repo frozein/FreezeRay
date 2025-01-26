@@ -21,7 +21,7 @@ vec3 MaterialSpecularGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& 
 	return vec3(0.0f);
 }
 
-vec3 MaterialSpecularGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialSpecularGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -29,7 +29,7 @@ vec3 MaterialSpecularGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3&
 	vec3 f = vec3(0.0f);
 
     if(u.x < 0.5f)
-        f = m_colorReflection->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, pdf);
+        f = m_colorReflection->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, u.yz(), pdf);
 	else
 	{
 		bool entering = cos_theta(wo) > 0.0f;
@@ -42,9 +42,9 @@ vec3 MaterialSpecularGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3&
 		float cosThetaI = std::abs(cos_theta(wo));
         float sinTheta2T = eta * eta * (1.0f - cosThetaI * cosThetaI);
         if(sinTheta2T >= 1.0f) //total internal reflection
-            f = m_colorReflection->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, pdf);
+            f = m_colorReflection->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, u.yz(), pdf);
 		else
-            f = m_colorTransmission->evaluate(hitInfo) * m_btdf.sample_f(wi, wo, pdf);
+            f = m_colorTransmission->evaluate(hitInfo) * m_btdf.sample_f(wi, wo, u.yz(), pdf);
     }
 
 	pdf /= 2.0f;

@@ -7,6 +7,7 @@
 #ifndef RURT_MICROFACET_DISTRIBUTION_H
 #define RURT_MICROFACET_DISTRIBUTION_H
 
+#include "rurt/globals.hpp"
 #include "quickmath.hpp"
 using namespace qm;
 
@@ -19,6 +20,7 @@ class MicrofacetDistribution
 {
 public:
 	virtual float distribution(const vec3& w) const = 0;
+	virtual vec3 sample_distribution(const vec3& w, const vec2& u) const = 0;
 
 	inline float proportion_visible(const vec3& w) const
 	{
@@ -32,8 +34,7 @@ public:
 
 	inline float pdf(const vec3& wo, const vec3& wh) const
 	{
-		float cosTheta = wh.y;
-		return distribution(wh) * cosTheta;
+		return distribution(wh) * std::abs(cos_theta(wh));
 	}
 
 protected:

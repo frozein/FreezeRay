@@ -22,10 +22,13 @@ namespace rurt
 	float roughnessY = m_roughnessY->evaluate(hitInfo); \
 	MicrofacetDistributionTrowbridgeReitz distribution(roughnessX, roughnessY);
 
-#define MAKE_BRDF()                \
-	MAKE_FRESNEL()                 \
-	MAKE_MICROFACET_DISTRIBUTION() \
-	BRDFMicrofacet brdf = BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&fresnel));
+#define MAKE_BRDF()                                                                                         \
+	MAKE_FRESNEL()                                                                                          \
+	MAKE_MICROFACET_DISTRIBUTION()                                                                          \
+	BRDFMicrofacet brdf = BRDFMicrofacet(                                                                   \
+		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
+		std::shared_ptr<const Fresnel>(&fresnel, [](const Fresnel*) {})                                     \
+	);
 
 //-------------------------------------------//
 
@@ -73,13 +76,13 @@ vec3 MaterialMetal::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld,
 	return brdf.f(wi, wo);
 }
 
-vec3 MaterialMetal::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialMetal::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
 
 	MAKE_BRDF();
-	vec3 f = brdf.sample_f(wi, wo, pdf);
+	vec3 f = brdf.sample_f(wi, wo, u.xy(), pdf);
 
 	wiWorld = local_to_world(hitInfo.worldNormal, wi);
 	return f;

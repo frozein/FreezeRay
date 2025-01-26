@@ -27,6 +27,44 @@ float MicrofacetDistributionTrowbridgeReitz::distribution(const vec3& w) const
 	return 1.0f / (RURT_PI * m_alphaX * m_alphaY * cosTheta4 * (1.0f + e) * (1.0f + e));
 }
 
+vec3 MicrofacetDistributionTrowbridgeReitz::sample_distribution(const vec3& w, const vec2& u) const
+{
+	float cosTheta;
+	float phi;
+
+	if(m_alphaX == m_alphaY)
+	{
+		float tanTheta2 = m_alphaX * m_alphaX * u.x / (1.0f - u.x);
+		
+		cosTheta = 1.0f / std::sqrt(1.0f + tanTheta2);
+		phi = RURT_2_PI * u.y;
+	} 
+	else 
+	{
+		phi = std::atan(m_alphaY / m_alphaX * std::tan(RURT_2_PI * u.y + 0.5f * RURT_PI));
+		if(u.y > 0.5f) 
+			phi += RURT_PI;
+
+		float sinPhi = std::sin(phi);
+		float cosPhi = std::cos(phi);
+		
+		float alphaX2 = m_alphaX * m_alphaX;
+		float alphaY2 = m_alphaY * m_alphaY;
+		float alpha2 = 1.0f / (cosPhi * cosPhi / alphaX2 + sinPhi * sinPhi / alphaY2);
+
+		float tanTheta2 = alpha2 * u.x / (1 - u.x);
+		cosTheta = 1 / std::sqrt(1 + tanTheta2);
+	}
+
+	float sinTheta = std::sqrtf(std::max(0.0f, 1.0f - cosTheta * cosTheta));
+	
+	vec3 wh = vec3(sinTheta * std::cos(phi), cosTheta, sinTheta * std::sin(phi));
+	if(!same_hemisphere(w, wh)) 
+		wh = -1.0f * wh;
+
+	return wh;
+}
+
 float MicrofacetDistributionTrowbridgeReitz::invisible_masked_proportion(const vec3& w) const
 {
 	float absTanTheta = std::abs(tan_theta(w));

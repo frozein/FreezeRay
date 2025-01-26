@@ -71,13 +71,33 @@ vec3 BTDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 			);
 }
 
-vec3 BTDFMicrofacet::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BTDFMicrofacet::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
-	//TODO
+	//sample wh:
+	//---------------
+    vec3 wh = m_distribution->sample_distribution(wo, u);
 
-	wi = RURT_UP_DIR;
-	pdfVal = 0.0f;
-	return vec3(0.0f);
+	//refract:
+	//---------------
+    float eta = cos_theta(wo) > 0.0f ? (m_etaI / m_etaT) : (m_etaT / m_etaI);
+
+	float cosThetaI = dot(wh, wi);
+	float sinTheta2I = std::max(0.0f, 1.0f - cosThetaI * cosThetaI);
+	float sinTheta2T = eta * eta * sinTheta2I;
+
+	if(sinTheta2T >= 1.0f)
+	{
+		pdfVal = 1.0f;
+		return vec3(0.0f);
+	}
+
+	float cosThetaT = std::sqrt(1.0f - sinTheta2T);
+    wi = -eta * wo + (eta * cosThetaI - cosThetaT) * wh;
+
+	//return:
+	//---------------
+    pdfVal = pdf(wi, wo);
+    return f(wi, wo);
 }
 
 float BTDFMicrofacet::pdf(const vec3& wi, const vec3& wo) const

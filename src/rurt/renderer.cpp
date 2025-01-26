@@ -117,7 +117,7 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 
 		if(hitInfo.material->bsdf_is_delta())
 		{
-			vec2 u = vec2((float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+			vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 			f = hitInfo.material->bsdf_sample_f(hitInfo, wi, wo, u, pdf);
 		}
 		else
@@ -142,8 +142,8 @@ vec3 Renderer::trace_path(const Ray& cameraRay) const
 			f = hitInfo.material->bsdf_f(hitInfo, wi, wo);
 		}
 
-		//break if pdf 0
-		if(pdf == 0.0f)
+		//break if 0 BRDF or PDF
+		if(f == vec3(0.0f) || pdf == 0.0f)
 			break;
 
 		//apply brdf to current color

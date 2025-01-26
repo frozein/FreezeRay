@@ -42,7 +42,7 @@ vec3 MaterialPlastic::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorl
 	return f;
 }
 
-vec3 MaterialPlastic::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialPlastic::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -50,11 +50,11 @@ vec3 MaterialPlastic::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWor
 	vec3 f = vec3(0.0f);
 
 	if(u.x < 0.5f)
-		f = m_colorDiffuse->evaluate(hitInfo) * m_brdfDiffuse.sample_f(wi, wo, pdf);
+		f = m_colorDiffuse->evaluate(hitInfo) * m_brdfDiffuse.sample_f(wi, wo, u.yz(), pdf);
 	else
 	{
 		MAKE_BRDF_SPECULAR();
-		f = m_colorSpecular->evaluate(hitInfo) * brdfSpecular.sample_f(wi, wo, pdf);
+		f = m_colorSpecular->evaluate(hitInfo) * brdfSpecular.sample_f(wi, wo, u.yz(), pdf);
 	}
 
 	pdf /= 2.0f;

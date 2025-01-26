@@ -65,7 +65,7 @@ TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::sha
 		uint32_t levelHeight = std::max(1u, m_mipPyramid[i - 1].height / 2);
 
 		std::shared_ptr<Tmemory[]> levelImage = std::shared_ptr<Tmemory[]>(new Tmemory[levelWidth * levelHeight]);
-
+		
 		for(uint32_t y = 0; y < levelHeight; y++)
 		for(uint32_t x = 0; x < levelWidth; x++)
 		{

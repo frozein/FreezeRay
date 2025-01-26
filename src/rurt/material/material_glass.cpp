@@ -54,7 +54,7 @@ vec3 MaterialGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld,
 	return f;
 }
 
-vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
@@ -66,7 +66,7 @@ vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld
     if(u.x < 0.5f)
 	{
 		MAKE_BRDF();
-        f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, pdf);
+        f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, u.yz(), pdf);
 	}
 	else
 	{
@@ -82,12 +82,12 @@ vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld
         if(sinTheta2T >= 1.0f) //total internal reflection
 		{
 			MAKE_BRDF();
-			f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, pdf);
+			f = m_colorReflection->evaluate(hitInfo) * brdf.sample_f(wi, wo, u.yz(), pdf);
 		}
 		else
 		{
 			MAKE_BTDF();
-			f = m_colorReflection->evaluate(hitInfo) * btdf.sample_f(wi, wo, pdf);
+			f = m_colorReflection->evaluate(hitInfo) * btdf.sample_f(wi, wo, u.yz(), pdf);
 		}
     }
 

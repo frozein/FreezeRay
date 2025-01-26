@@ -18,12 +18,12 @@ vec3 MaterialMirror::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld
 	return vec3(0.0f);
 }
 
-vec3 MaterialMirror::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec2& u, float& pdf) const
+vec3 MaterialMirror::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
 {
 	vec3 wi;
 	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
 
-	vec3 f = m_color->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, pdf);
+	vec3 f = m_color->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, u.xy(), pdf);
 
 	wiWorld = local_to_world(hitInfo.worldNormal, wi);
 	return f;

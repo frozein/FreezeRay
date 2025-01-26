@@ -19,6 +19,7 @@ public:
 	MicrofacetDistributionBeckmann(float roughnessX, float roughnessY);
 
 	float distribution(const vec3& w) const override;
+	virtual vec3 sample_distribution(const vec3& w, const vec2& u) const override;
 	float invisible_masked_proportion(const vec3& w) const override;
 
 private:

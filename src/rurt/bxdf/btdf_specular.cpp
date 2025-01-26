@@ -18,7 +18,7 @@ vec3 BTDFSpecular::f(const vec3& wi, const vec3& wo) const
 	return vec3(0.0f);
 }
 
-vec3 BTDFSpecular::sample_f(vec3& wi, const vec3& wo, float& pdfVal) const
+vec3 BTDFSpecular::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
 	//get indices of refraction:
 	//---------------
