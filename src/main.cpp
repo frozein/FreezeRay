@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 #include "rurt/renderer.hpp"
+#include "rurt/renderer/renderer_path.hpp"
 #include "rurt/material/material_single_bxdf.hpp"
 #include "rurt/material/material_specular_glass.hpp"
 #include "rurt/material/material_metal.hpp"
@@ -103,44 +104,49 @@ int main(int argc, char** argv)
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
 	);
-	rurt::Renderer* renderer = new rurt::Renderer(scene, camera, WINDOW_W, WINDOW_H, 10);
+	std::unique_ptr<rurt::Renderer> renderer = std::make_unique<rurt::RendererPath>(
+		camera, 
+		WINDOW_W, 
+		WINDOW_H, 
+		50, 
+		100,
+		true
+	);
 
-	//draw loop until rendering finished:
+	//start rendering:
 	//---------------
 	unsigned int startTime = SDL_GetTicks();
 
-	uint32_t scanline[WINDOW_W];
+	auto writePixel = [&](uint32_t x, uint32_t y, vec3 color) -> void {
+		uint8_t r = (uint8_t)(color.r * 255.0f);
+		uint8_t g = (uint8_t)(color.g * 255.0f);
+		uint8_t b = (uint8_t)(color.b * 255.0f);
+		uint8_t a = UINT8_MAX; //each pixel fully opaque
 
-	bool running = true;
-	for(int y = 0; y < WINDOW_H; y++)
-	{
-		renderer->draw_scanline(WINDOW_H - y - 1, scanline);
+		uint32_t writeColor = SDL_MapRGBA(windowSurface->format, r, g, b, a);
+		uint32_t writeY = WINDOW_H - y - 1;
 
-		SDL_LockSurface(windowSurface);
-		for(uint32_t x = 0; x < WINDOW_W; x++)
-		{
-			uint8_t r = (scanline[x] >> 24) & 0xFF; 
-			uint8_t g = (scanline[x] >> 16) & 0xFF; 
-			uint8_t b = (scanline[x] >> 8 ) & 0xFF;
-			uint8_t a = scanline[x] & 0xFF; 
+		((uint32_t*)windowSurface->pixels)[x + WINDOW_W * writeY] = writeColor; //TODO: be more robust about format handling
+	};
 
-			uint32_t writeColor = SDL_MapRGBA(windowSurface->format, r, g, b, a);
-			((uint32_t*)windowSurface->pixels)[x + WINDOW_W * y] = writeColor; //TODO: be more robust about format handling
-		}
+	auto display = [&]() -> void {
 		SDL_UnlockSurface(windowSurface);
-
 		SDL_UpdateWindowSurface(window);
+		SDL_LockSurface(windowSurface);
 
 		SDL_Event event;
 		while(SDL_PollEvent(&event))
 		{
 			if(event.type == SDL_QUIT)
-				running = false;
+				exit(0);
 		}
+	};
 
-		if(!running)
-			break;
-	}
+	SDL_LockSurface(windowSurface);
+	
+	renderer->render(scene, writePixel, display);
+
+	SDL_UnlockSurface(windowSurface);
 
 	//print total rendering time and continue updating window until closed:
 	//---------------
@@ -148,13 +154,13 @@ int main(int argc, char** argv)
 
 	std::cout << "RENDER TIME: " << (endTime - startTime) / 1000.0f << "s" << std::endl;
 
-	while(running)
+	while(true)
 	{
 		SDL_Event event;
 		while(SDL_PollEvent(&event))
 		{
 			if(event.type == SDL_QUIT)
-				running = false;
+				exit(0);
 		}
 	}
 
