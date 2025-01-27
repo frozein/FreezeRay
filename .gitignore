@@ -23,6 +23,7 @@ x32/
 [Dd]ebug/
 [Rr]elease/
 .vs/
+*.dir/
 
 # binary files:
 *.dll

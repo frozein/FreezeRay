@@ -2,11 +2,11 @@ cmake_minimum_required(VERSION 3.12)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-project(rt VERSION 1.0)
+project(freezeray VERSION 1.0)
 
 # find source files:
-file(GLOB_RECURSE rt_src CONFIGURE_DEPENDS "src/*.cpp")
-add_executable(${PROJECT_NAME} ${rt_src})
+file(GLOB_RECURSE freezeray_src CONFIGURE_DEPENDS "src/*.cpp")
+add_executable(${PROJECT_NAME} ${freezeray_src})
 
 # find include diretories and libraries
 find_package(SDL2 REQUIRED)
