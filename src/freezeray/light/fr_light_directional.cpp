@@ -7,7 +7,7 @@ namespace fr
 {
 
 LightDirectional::LightDirectional(const vec3& dir, const vec3& intensity, float worldRadius) :
-	Light(true), m_dir(normalize(dir)), m_intensity(intensity), m_worldRadius(worldRadius)
+	Light(true, true), m_dir(normalize(dir)), m_intensity(intensity), m_worldRadius(worldRadius)
 {
 
 }

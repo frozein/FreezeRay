@@ -7,7 +7,7 @@ namespace fr
 {
 
 LightSpotlight::LightSpotlight(const mat4& transform, const vec3& intensity, float width, float falloffStart) :
-	Light(true), m_toLocal(inverse(transform)), m_pos((transform * vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz()), 
+	Light(true, false), m_toLocal(inverse(transform)), m_pos((transform * vec4(0.0f, 0.0f, 0.0f, 1.0f)).xyz()), 
 	m_intensity(intensity), m_cosWidth(std::cosf(width)), m_cosFalloffStart(std::cosf(falloffStart))
 {
 

@@ -21,7 +21,7 @@ namespace fr
 class Light
 {
 public:
-	Light(bool delta) : m_delta(delta) {};
+	Light(bool delta, bool infinite) : m_delta(delta), m_infinite(infinite) {};
 
 	virtual vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const = 0;
 	virtual vec3 power() const = 0;
@@ -30,9 +30,11 @@ public:
 	virtual vec3 le(const IntersectionInfo& hitInfo, const vec3& w) const { return vec3(0.0f); }
 
 	bool is_delta() const { return m_delta; }
+	bool is_infinite() const { return m_infinite; }
 
 private:
 	bool m_delta;
+	bool m_infinite;
 };
 
 } //namespace fr

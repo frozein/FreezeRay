@@ -7,7 +7,7 @@ namespace fr
 {
 
 LightPoint::LightPoint(const vec3& pos, const vec3& intensity) :
-	Light(true), m_pos(pos), m_intensity(intensity)
+	Light(true, false), m_pos(pos), m_intensity(intensity)
 {
 
 }

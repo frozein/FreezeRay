@@ -22,7 +22,7 @@ public:
 	T evaluate(const IntersectionInfo& hitInfo) const override;
 
 	//loads sizeof(Tmemory) components from an image using stb_image, 1 byte-per-component
-	static std::shared_ptr<TextureImage<T, Tmemory>> from_file(const std::string& path, TextureRepeatMode repeatMode);
+	static std::shared_ptr<TextureImage<T, Tmemory>> from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode);
 	//creates new texture image sharing memory from the old one, but with a different type
 	template<typename Tother>
 	static std::shared_ptr<TextureImage<T, Tmemory>> from_texture_image(const std::shared_ptr<TextureImage<Tother, Tmemory>>& image);

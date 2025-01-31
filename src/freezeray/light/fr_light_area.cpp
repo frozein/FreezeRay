@@ -7,7 +7,7 @@ namespace fr
 {
 
 LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transform, const vec3& intensity) :
-	Light(false), m_mesh(mesh), m_transform(transform), m_intensity(intensity)
+	Light(false, false), m_mesh(mesh), m_transform(transform), m_intensity(intensity)
 {
 	if(!m_mesh)
 		throw std::invalid_argument("no mesh provided to LightArea");

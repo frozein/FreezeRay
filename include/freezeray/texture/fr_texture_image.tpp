@@ -108,7 +108,7 @@ T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
 }
 
 template<typename T, typename Tmemory>
-std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(const std::string& path, TextureRepeatMode repeatMode)
+std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode)
 {
 	static_assert(sizeof(Tmemory) <= 4, "cannot load an image with >4 components");
 
@@ -117,9 +117,19 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 	int width;
 	int height;
 	int numChannels;
-	uint8_t* imageRaw = stbi_load(path.c_str(), &width, &height, &numChannels, sizeof(Tmemory));
-	if(!imageRaw)
-		throw std::runtime_error("failed to load image from \"" + path + "\"");
+	uint8_t* imageRaw;
+	if(hdr)
+	{
+		imageRaw = (uint8_t*)stbi_loadf(path.c_str(), &width, &height, &numChannels, sizeof(Tmemory) / sizeof(float));
+		if(!imageRaw)
+			throw std::runtime_error("failed to load image from \"" + path + "\"");
+	}
+	else
+	{
+		imageRaw = stbi_load(path.c_str(), &width, &height, &numChannels, sizeof(Tmemory));
+		if(!imageRaw)
+			throw std::runtime_error("failed to load image from \"" + path + "\"");
+	}
 
 	//resize to power of 2:
 	//---------------

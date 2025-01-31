@@ -34,6 +34,7 @@ public:
 	bool intersect(const Ray& ray, IntersectionInfo& info) const;
 
 	const std::vector<std::shared_ptr<const Light>>& get_lights() const;
+	const std::vector<std::shared_ptr<const Light>>& get_infinite_lights() const;
 
 private:
 	struct ObjectReferenceFull
@@ -49,6 +50,7 @@ private:
 	std::vector<ObjectReferenceFull> m_objects;
 
 	std::vector<std::shared_ptr<const Light>> m_lights;
+	std::vector<std::shared_ptr<const Light>> m_infiniteLights;
 
 	void add_object_reference(const std::shared_ptr<const Object>& object, const std::shared_ptr<const Light>& light, const mat4& transform);
 };

@@ -46,13 +46,16 @@ Scene::Scene(const std::vector<ObjectReference>& objects, const std::vector<std:
 		mat4 lightTransform;
 		std::shared_ptr<const Mesh> lightMesh = lights[i]->get_mesh(lightTransform);
 
-		if(lightMesh == nullptr)
-			continue;
+		if(lightMesh != nullptr)
+		{
+			std::vector<ObjectComponent> componentList = { { lightMesh, lightMaterial } };
+			std::shared_ptr<const Object> lightObject = std::make_shared<Object>(componentList);
 
-		std::vector<ObjectComponent> componentList = { { lightMesh, lightMaterial } };
-		std::shared_ptr<const Object> lightObject = std::make_shared<Object>(componentList);
+			add_object_reference(lightObject, lights[i], lightTransform);
+		}
 
-		add_object_reference(lightObject, lights[i], lightTransform);
+		if(lights[i]->is_infinite())
+			m_infiniteLights.push_back(lights[i]);
 	}
 }
 
@@ -135,6 +138,11 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 const std::vector<std::shared_ptr<const Light>>& Scene::get_lights() const
 {
 	return m_lights;
+}
+
+const std::vector<std::shared_ptr<const Light>>& Scene::get_infinite_lights() const
+{
+	return m_infiniteLights;
 }
 
 void Scene::add_object_reference(const std::shared_ptr<const Object>& object, const std::shared_ptr<const Light>& light, const mat4& transform)

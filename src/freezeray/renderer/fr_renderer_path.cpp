@@ -55,7 +55,9 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 			}
 			else
 			{
-				//TODO: add environment lights
+				const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
+				for(uint32_t i = 0; i < infiniteLights.size(); i++)
+					light = light + mult * infiniteLights[i]->le(hitInfo, -1.0f * wo);
 			}
 		}
 

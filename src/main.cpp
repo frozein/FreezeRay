@@ -20,6 +20,7 @@
 #include "freezeray/light/fr_light_directional.hpp"
 #include "freezeray/light/fr_light_point.hpp"
 #include "freezeray/light/fr_light_area.hpp"
+#include "freezeray/light/fr_light_environment.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
 #include "freezeray/texture/fr_texture_image.hpp"
 
@@ -86,12 +87,13 @@ int main(int argc, char** argv)
 
 	std::shared_ptr<const fr::LightDirectional> light1 = std::make_shared<fr::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
 	std::shared_ptr<const fr::LightPoint> light2 = std::make_shared<fr::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
+	std::shared_ptr<const fr::LightEnvironment> light3 = std::make_shared<fr::LightEnvironment>("assets/test_skybox.hdr");
 	
 	//std::shared_ptr<const fr::Mesh> lightMesh1 = fr::Mesh::unit_square();
 	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
 	//std::shared_ptr<const fr::LightArea> light1 = std::make_shared<fr::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
 
-	std::vector<std::shared_ptr<const fr::Light>> lightList = {light1, light2};
+	std::vector<std::shared_ptr<const fr::Light>> lightList = {light1, light2, light3};
 
 	std::shared_ptr<const fr::Scene> scene = std::make_shared<fr::Scene>(objectList, lightList);
 
