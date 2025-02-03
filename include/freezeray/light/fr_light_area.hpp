@@ -9,6 +9,7 @@
 #include "../fr_light.hpp"
 #include "../fr_mesh.hpp"
 #include "../fr_scene.hpp"
+#include "../fr_distribution.hpp"
 
 //-------------------------------------------//
 
@@ -34,10 +35,8 @@ private:
 	vec3 m_intensity;
 
 	float m_area;
-	std::vector<float> m_acceptanceTable;
-	std::vector<uint32_t> m_aliasTable;
+	std::unique_ptr<Distribution<uint32_t>> m_triDistribution;
 
-	void generate_alias_table();
 	vec3 sample_mesh_area(const vec3& u) const;
 };
 

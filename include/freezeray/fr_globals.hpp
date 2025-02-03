@@ -112,6 +112,11 @@ inline vec3 linear_to_srgb(const vec3& color)
 	);
 }
 
+inline float luminance(const vec3& color)
+{
+	return dot(color, vec3(0.2126f, 0.7152f, 0.0722f));
+}
+
 }; //namespace fr
 
 #endif //#ifndef FR_GLOBALS_H

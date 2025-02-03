@@ -6,7 +6,8 @@
 #ifndef FR_LIGHT_ENVIRONMENT_H
 #define FR_LIGHT_ENVIRONMENT_H
 
-#include "freezeray/fr_light.hpp"
+#include "../fr_light.hpp"
+#include "../fr_distribution.hpp"
 
 //-------------------------------------------//
 
@@ -29,11 +30,21 @@ private:
 	uint32_t m_height;
 	std::unique_ptr<const vec3[]> m_image;
 
+	float m_luminance;
 	vec3 m_power;
 	float m_worldRadius;
 
+	struct TexelCoordinate
+	{
+		uint32_t u;
+		uint32_t v;
+	};
+	std::unique_ptr<Distribution<TexelCoordinate>> m_texelDistribution;
+
 	vec3 get_texel(uint32_t u, uint32_t v) const;
 	vec3 bilinear(const vec2& uv) const;
+
+	void create_distribution();
 };
 
 }; //namespace fr

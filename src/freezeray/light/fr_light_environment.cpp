@@ -8,15 +8,26 @@ namespace fr
 {
 
 LightEnvironment::LightEnvironment(std::unique_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius) :
-	Light(false, true), m_image(std::move(image)), m_width(width), m_height(height), m_power(1.0f), m_worldRadius(worldRadius)
+	Light(false, true), m_image(std::move(image)), m_width(width), m_height(height), m_worldRadius(worldRadius)
 {
-	//TODO: initialize structure for sampling
-	//TODO: average luminance to get total intensity
+	//validate:
+	//---------------
+	if(!m_image)
+		throw std::invalid_argument("image cannot be NULL");
+
+	if(m_width == 0 || m_height == 0)
+		throw std::invalid_argument("image dimensions must be positive");
+
+	//generate texel distribution:
+	//---------------
+	create_distribution();
 }
 
 LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
-	Light(false, true), m_power(1.0f), m_worldRadius(worldRadius)
+	Light(false, true), m_worldRadius(worldRadius)
 {
+	//load image:
+	//---------------
 	int width;
 	int height;
 	int numChannels;
@@ -33,18 +44,44 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 	memcpy((void*)m_image.get(), (void*)imageRaw, width * height * sizeof(vec3));
 
 	stbi_image_free((void*)imageRaw);
+
+	//generate texel distribution:
+	//---------------
+	create_distribution();
 }
 
 vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
-	//TODO
+	//sample texel:
+	//---------------
+	TexelCoordinate texel = m_texelDistribution->sample(u.x);
+	vec2 uv = vec2(
+		(texel.u + u.y) / (float)m_width, 
+		(texel.v + u.z) / (float)m_height
+	);
 
-	wiWorld = vec3(1.0f);
-	pdf = 1.0f;
+	//uv -> spherical:
+	//---------------
+	float theta = uv.x * FR_2_PI;
+	float phi = uv.y * FR_PI;
+	float cosTheta = std::cos(theta);
+	float sinTheta = std::sin(theta);
+	float sinPhi = std::sin(phi);
+	float cosPhi = std::cos(phi);
+
+	//get texel value:
+	//---------------
+	vec3 li = get_texel(texel.u, texel.v) * sinPhi;
+	float lum = luminance(li);
+
+	//return:
+	//---------------
+	wiWorld = vec3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
+	pdf = lum / m_luminance;
 	vis.infinite = true;
 	vis.endPos = vec3(0.0f);
 
-	return vec3(0.0f);
+	return 5.0f * li;
 }
 
 vec3 LightEnvironment::power() const
@@ -86,6 +123,46 @@ vec3 LightEnvironment::bilinear(const vec2& uv) const
 
 	return (1 - du) * ((1 - dv) * get_texel(u0    , v0) + dv * get_texel(u0    , v0 + 1)) +
 	            du  * ((1 - dv) * get_texel(u0 + 1, v0) + dv * get_texel(u0 + 1, v0 + 1));
+}
+
+void LightEnvironment::create_distribution()
+{
+	std::vector<std::pair<TexelCoordinate, float>> pmf(m_width * m_height);
+	
+	float area = 0.0f;
+
+	m_luminance = 0.0f;
+	m_power = vec3(0.0f);
+
+	for(uint32_t y = 0; y < m_height; y++)
+	{
+		float sinTheta = std::sin(FR_PI * ((float)y + 0.5f) / (float)m_height);
+
+		for(uint32_t x = 0; x < m_width; x++)
+		{
+			vec3 texelValue = m_image[x + m_width * y];
+			texelValue = texelValue * sinTheta;
+			float lum = luminance(texelValue);
+
+			pmf[x + m_width * y] = { {x, y}, lum };
+
+			m_luminance += lum;
+			m_power = m_power + texelValue;
+		}
+
+		area += m_width * sinTheta;
+	}
+
+	m_texelDistribution = std::make_unique<Distribution<TexelCoordinate>>(pmf, m_luminance);
+
+	for(uint32_t i = 0; i < 1000; i++)
+	{
+		float test = (float)rand() / RAND_MAX;
+		
+	}
+
+	m_luminance /= area;
+	m_power = m_power / area;
 }
 
 }; //namespace fr

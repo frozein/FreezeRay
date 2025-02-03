@@ -9,10 +9,39 @@ namespace fr
 LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transform, const vec3& intensity) :
 	Light(false, false), m_mesh(mesh), m_transform(transform), m_intensity(intensity)
 {
+	//validate:
+	//---------------
 	if(!m_mesh)
-		throw std::invalid_argument("no mesh provided to LightArea");
+		throw std::invalid_argument("mesh must not be NULL");
 
-	generate_alias_table();
+	//generate triangle distribution:
+	//---------------
+	const uint32_t numTris = m_mesh->get_num_tris();
+	
+	m_area = 0.0f;
+	std::vector<std::pair<uint32_t, float>> pmf(numTris);
+
+	for(uint32_t i = 0; i < numTris; i++) 
+	{
+		uint32_t idx0;
+		uint32_t idx1;
+		uint32_t idx2;
+		m_mesh->get_tri_indices(i, idx0, idx1, idx2);
+
+		vec3 v0 = m_mesh->get_vert_pos_at(idx0);
+		vec3 v1 = m_mesh->get_vert_pos_at(idx1);
+		vec3 v2 = m_mesh->get_vert_pos_at(idx2);
+
+		v0 = (m_transform * vec4(v0, 1.0f)).xyz();
+		v1 = (m_transform * vec4(v1, 1.0f)).xyz();
+		v2 = (m_transform * vec4(v2, 1.0f)).xyz();
+
+		float triArea = length(cross(v1 - v0, v2 - v0)) * 0.5f;
+		pmf[i] = { i, triArea };
+		m_area += triArea;
+	}
+
+	m_triDistribution = std::make_unique<Distribution<uint32_t>>(pmf, m_area);
 }
 
 vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
@@ -44,101 +73,13 @@ std::shared_ptr<const Mesh> LightArea::get_mesh(mat4& transform) const
 	return m_mesh;
 }
 
-void LightArea::generate_alias_table()
-{
-	//calculate area of each triangle:
-	//---------------
-	const uint32_t numTris = m_mesh->get_num_tris();
-	
-	m_area = 0.0f;
-	std::vector<float> areas(numTris);
-
-	for(uint32_t i = 0; i < numTris; i++) 
-	{
-		uint32_t idx0;
-		uint32_t idx1;
-		uint32_t idx2;
-		m_mesh->get_tri_indices(i, idx0, idx1, idx2);
-
-		vec3 v0 = m_mesh->get_vert_pos_at(idx0);
-		vec3 v1 = m_mesh->get_vert_pos_at(idx1);
-		vec3 v2 = m_mesh->get_vert_pos_at(idx2);
-
-		v0 = (m_transform * vec4(v0, 1.0f)).xyz();
-		v1 = (m_transform * vec4(v1, 1.0f)).xyz();
-		v2 = (m_transform * vec4(v2, 1.0f)).xyz();
-
-		float triArea = length(cross(v1 - v0, v2 - v0)) * 0.5f;
-		areas[i] = triArea;
-		m_area += triArea;
-	}
-
-	//generate scaled probabilities:
-	//---------------
-	std::vector<float> scaledProbs(numTris);
-	for (uint32_t i = 0; i < numTris; i++)
-		scaledProbs[i] = (areas[i] / m_area) * numTris;
-
-	//create small/large worklists:
-	//---------------
-	std::vector<uint32_t> small;
-	std::vector<uint32_t> large;
-
-	for (uint32_t i = 0; i < numTris; i++) 
-	{
-		if (scaledProbs[i] < 1.0f)
-			small.push_back(i);
-		else
-			large.push_back(i);
-	}
-
-	//process small/large worklists:
-	//---------------
-	m_acceptanceTable.resize(numTris);
-	m_aliasTable.resize(numTris);
-
-	while(!small.empty() && !large.empty()) 
-	{
-		uint32_t s = small.back(); 
-		uint32_t l = large.back(); 
-		
-		small.pop_back();
-		large.pop_back();
-
-		m_acceptanceTable[s] = scaledProbs[s];
-		m_aliasTable[s] = l;
-
-		scaledProbs[l] = (scaledProbs[l] + scaledProbs[s]) - 1.0f;
-
-		if (scaledProbs[l] < 1.0f)
-			small.push_back(l);
-		else
-			large.push_back(l);
-	}
-
-	for(uint32_t l : large)
-		m_acceptanceTable[l] = 1.0f;
-
-	for(uint32_t s : small)
-		m_acceptanceTable[s] = 1.0f;
-}
-
 vec3 LightArea::sample_mesh_area(const vec3& u) const
 {
-	//select triangle:
+	//get triangle:
 	//---------------
-	float triSelect = u.x * m_mesh->get_num_tris();
-	uint32_t triIdx = (uint32_t)triSelect;
-	if(triIdx == m_mesh->get_num_tris())
-		triIdx--;
-	
-	float acceptanceProb = triSelect - triIdx;
-    if(acceptanceProb > m_acceptanceTable[triIdx])
-        triIdx = m_aliasTable[triIdx];
-
-	//get triangle vertices:
-	//---------------
-    uint32_t idx0;
+	uint32_t triIdx = m_triDistribution->sample(u.x);
+    
+	uint32_t idx0;
     uint32_t idx1;
     uint32_t idx2;
 	m_mesh->get_tri_indices(triIdx, idx0, idx1, idx2);

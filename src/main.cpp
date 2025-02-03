@@ -71,7 +71,7 @@ int main(int argc, char** argv)
 
 	std::shared_ptr<const fr::Material> material1 = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertianDiffuse>(), tex1);
 	std::shared_ptr<const fr::Material> material2 = std::make_shared<fr::MaterialMetal>("", fr::MetalType::GOLD, tex2, tex2);
-	//std::shared_ptr<const fr::Material> material2 = std::make_shared<fr::MaterialPlastic>("", vec3(0.0f), vec3(1.0f), 0.25f);
+	//std::shared_ptr<const fr::Material> material2 = std::make_shared<fr::MaterialMirror>("", tex1);
 
 	std::vector<std::shared_ptr<const fr::Mesh>> meshList1 = {mesh1};
 	std::vector<std::shared_ptr<const fr::Material>> materialList1 = {material1};
@@ -87,21 +87,21 @@ int main(int argc, char** argv)
 
 	std::shared_ptr<const fr::LightDirectional> light1 = std::make_shared<fr::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
 	std::shared_ptr<const fr::LightPoint> light2 = std::make_shared<fr::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
-	std::shared_ptr<const fr::LightEnvironment> light3 = std::make_shared<fr::LightEnvironment>("assets/test_skybox.hdr");
+	std::shared_ptr<const fr::LightEnvironment> light3 = std::make_shared<fr::LightEnvironment>("assets/test_skybox.png");
 	
 	//std::shared_ptr<const fr::Mesh> lightMesh1 = fr::Mesh::unit_square();
 	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
 	//std::shared_ptr<const fr::LightArea> light1 = std::make_shared<fr::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
 
-	std::vector<std::shared_ptr<const fr::Light>> lightList = {light1, light2, light3};
+	std::vector<std::shared_ptr<const fr::Light>> lightList = {light3};
 
 	std::shared_ptr<const fr::Scene> scene = std::make_shared<fr::Scene>(objectList, lightList);
 
 	//create renderer:
 	//---------------
 	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(0.0f, 0.0f, 3.0f), 
-		normalize(vec3(0.0f, 0.0f, -1.0f)), 
+		vec3(0.0f, 0.0f, -3.0f), 
+		normalize(vec3(0.0f, 0.0f, 1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
@@ -111,7 +111,7 @@ int main(int argc, char** argv)
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		1,
+		10,
 		true
 	);
 

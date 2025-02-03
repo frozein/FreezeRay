@@ -80,6 +80,9 @@ vec3 Renderer::uniform_sample_one_light(const std::shared_ptr<const Scene>& scen
 	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
 	vec3 li = light->sample_li(hitInfo, u, wi, visInfo, pdf);
 
+	if(pdf == 0.0f)
+		return vec3(0.0f);
+
 	pdf /= (float)numLights;
 
 	//compute bsdf f:
