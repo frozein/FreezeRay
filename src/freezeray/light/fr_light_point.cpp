@@ -24,6 +24,12 @@ vec3 LightPoint::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3&
 	return m_intensity / dot(toLight, toLight);
 }
 
+float LightPoint::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
+{
+	//delta light
+	return 1.0f;
+}
+
 vec3 LightPoint::power() const
 {
 	return 4.0f * FR_PI * m_intensity;

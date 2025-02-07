@@ -28,6 +28,8 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 {
 	//load image:
 	//---------------
+	stbi_set_flip_vertically_on_load(true);
+
 	int width;
 	int height;
 	int numChannels;
@@ -81,7 +83,24 @@ vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 	vis.infinite = true;
 	vis.endPos = vec3(0.0f);
 
-	return 5.0f * li;
+	return li;
+}
+
+float LightEnvironment::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
+{
+	float theta = std::atan2(w.z, w.x);
+	if(theta < 0.0f)
+		theta += FR_2_PI;
+
+	float phi = std::acos(w.y);
+	
+	uint32_t u = (uint32_t)((theta * FR_INV_2_PI) * m_width);
+	uint32_t v = (uint32_t)((theta * FR_INV_2_PI) * m_height);
+
+	vec3 li = get_texel(u, v) * std::sin(phi);
+	float lum = luminance(li);
+
+	return lum / m_luminance;
 }
 
 vec3 LightEnvironment::power() const

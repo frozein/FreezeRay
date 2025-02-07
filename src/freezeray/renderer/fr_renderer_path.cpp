@@ -6,11 +6,12 @@
 namespace fr
 {
 
-RendererPath::RendererPath(std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH, uint32_t maxDepth, uint32_t samplesPerPixel, bool importanceSampling) :
+RendererPath::RendererPath(std::shared_ptr<const Camera> cam, uint32_t imageW, uint32_t imageH, uint32_t maxDepth, uint32_t samplesPerPixel, bool importanceSampling, bool multipleImportanceSampling) :
 	Renderer(cam, imageW, imageH),
 	m_maxDepth(maxDepth), 
 	m_samplesPerPixel(samplesPerPixel), 
-	m_importanceSampling(importanceSampling)
+	m_importanceSampling(importanceSampling),
+	m_mis(multipleImportanceSampling)
 {
 
 }
@@ -57,7 +58,7 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 			{
 				const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
 				for(uint32_t i = 0; i < infiniteLights.size(); i++)
-					light = light + mult * infiniteLights[i]->le(hitInfo, -1.0f * wo);
+					light = light + mult * infiniteLights[i]->le(hitInfo, wo);
 			}
 		}
 
@@ -67,7 +68,12 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 
 		//add contribution from light sources
 		if(!hitInfo.material->bsdf_is_delta())
-			light = light + mult * uniform_sample_one_light(scene, hitInfo, wo);
+		{
+			if(m_mis)
+				light = light + mult * sample_one_light_mis(scene, hitInfo, wo);
+			else
+				light = light + mult * sample_one_light(scene, hitInfo, wo);
+		}
 
 		//evaluate bsdf:
 		vec3 f;

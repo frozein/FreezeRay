@@ -24,6 +24,7 @@ public:
 	Light(bool delta, bool infinite) : m_delta(delta), m_infinite(infinite) {};
 
 	virtual vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const = 0;
+	virtual float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const = 0;
 	virtual vec3 power() const = 0;
 
 	virtual std::shared_ptr<const Mesh> get_mesh(mat4& transform) const { return nullptr; }

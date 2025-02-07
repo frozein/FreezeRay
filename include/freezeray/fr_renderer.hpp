@@ -35,11 +35,14 @@ public:
 protected:
 	virtual vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) = 0;
 
-	vec3 uniform_sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
+	vec3 sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
+	vec3 sample_one_light_mis(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
 	bool trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const;
 
 	static vec3 random_dir_sphere();
 	static vec3 random_dir_hemisphere(const vec3& normal);
+
+	static float mis_power_heuristic(uint32_t nf, float pdff, uint32_t ng, float pdfg);
 
 private:
 	std::shared_ptr<const Camera> m_cam;

@@ -39,6 +39,12 @@ vec3 LightSpotlight::sample_li(const IntersectionInfo& hitInfo, const vec3& u, v
 	return m_intensity * falloff / dot(toLight, toLight);
 }
 
+float LightSpotlight::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
+{
+	//delta light
+	return 0.0f;
+}
+
 vec3 LightSpotlight::power() const
 {
 	return m_intensity * FR_2_PI * (1.0f - 0.5f * (m_cosFalloffStart + m_cosWidth));

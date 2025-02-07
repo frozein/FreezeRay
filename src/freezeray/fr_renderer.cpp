@@ -60,7 +60,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 
 //-------------------------------------------//
 
-vec3 Renderer::uniform_sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
+vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
 {
 	//choose random light index:
 	//---------------
@@ -95,6 +95,94 @@ vec3 Renderer::uniform_sample_one_light(const std::shared_ptr<const Scene>& scen
 		return f * li / pdf;
 	else
 		return vec3(0.0f);
+}
+
+vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
+{
+	//choose random light index:
+	//---------------
+	uint32_t numLights = (uint32_t)scene->get_lights().size();
+	if(numLights == 0)
+		return vec3(0.0f);
+
+	uint32_t lightIdx = rand() % numLights;
+	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
+
+	float pdfLightSample = 1.0f / (float)numLights;
+
+	//sampling vars:
+	//---------------
+	vec3 li;
+	vec3 wi;
+	vec3 f;
+	float pdfLight;
+	float pdfScattering;
+
+	vec3 ld = vec3(0.0f);
+
+	//sample from light:
+	//---------------
+	VisibilityTestInfo visInfo;
+	vec3 uLight = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	li = light->sample_li(hitInfo, uLight, wi, visInfo, pdfLight);
+
+	f = hitInfo.material->bsdf_f(hitInfo, wi, wo) * std::abs(dot(wi, hitInfo.worldNormal));
+	pdfScattering = hitInfo.material->bsdf_pdf(hitInfo, wi, wo);
+
+	if(!trace_visibility_ray(scene, hitInfo, wi, wo, visInfo))
+		li = vec3(0.0f);
+
+	if(pdfLight > 0.0f && pdfScattering > 0.0f)
+	{
+		if(light->is_delta())
+			ld = ld + li * f / pdfLight;
+		else
+		{
+			float weight = mis_power_heuristic(1, pdfLight, 1, pdfScattering);
+			ld = ld + weight * (li * f / pdfLight);
+		}
+	}
+
+	//sample from bsdf:
+	//---------------
+	if(!light->is_delta())
+	{
+		//sample from bsdf
+		vec3 uBsdf = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+		f = hitInfo.material->bsdf_sample_f(hitInfo, wi, wo, uBsdf, pdfScattering);
+		f = f * std::abs(dot(wi, hitInfo.worldNormal));
+
+		//get light pdf
+		pdfLight = light->pdf_li(hitInfo, wi);
+
+		if(pdfLight > 0.0f && pdfScattering > 0.0f)
+		{
+			//compute mis weight
+			float weight = mis_power_heuristic(1, pdfScattering, 1, pdfLight);
+
+			//trace ray, get light contrib
+			vec3 rayPos = hitInfo.worldPos;
+			if(dot(wi, hitInfo.worldNormal) > 0.0f)
+				rayPos = rayPos + hitInfo.worldNormal * FR_EPSILON;
+			else
+				rayPos = rayPos - hitInfo.worldNormal * FR_EPSILON;
+
+			Ray ray(rayPos, wi);
+			IntersectionInfo hitInfoBsdf;
+			
+			if(scene->intersect(ray, hitInfoBsdf))
+				li = hitInfoBsdf.light ? hitInfoBsdf.light->le(hitInfoBsdf, -1.0f * wi) : vec3(0.0f);
+			else
+				li = light->le(hitInfoBsdf, -1.0f * wi);
+
+			//add light contrib
+			ld = ld + weight * (li * f / pdfScattering);
+		}
+	}
+
+	//return:
+	//---------------
+	return ld / pdfLightSample;
 }
 
 bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const
@@ -185,6 +273,14 @@ vec3 Renderer::random_dir_hemisphere(const vec3& normal)
 		randUnitSphere = randUnitSphere * -1.0f;
 
 	return randUnitSphere;
+}
+
+float Renderer::mis_power_heuristic(uint32_t nf, float pdff, uint32_t ng, float pdfg)
+{
+	float f = nf * pdff;
+	float g = ng * pdfg;
+
+	return f * f / (f * f + g * g);
 }
 
 }; //namespace fr

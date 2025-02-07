@@ -22,6 +22,12 @@ vec3 LightDirectional::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 	return m_intensity;
 }
 
+float LightDirectional::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
+{
+	//delta light
+	return 0.0f;
+}
+
 vec3 LightDirectional::power() const
 {
 	return FR_PI * m_intensity * m_worldRadius * m_worldRadius;

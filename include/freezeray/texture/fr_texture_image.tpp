@@ -114,6 +114,8 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 
 	//load image from stbi:
 	//---------------
+	stbi_set_flip_vertically_on_load(true);
+
 	int width;
 	int height;
 	int numChannels;

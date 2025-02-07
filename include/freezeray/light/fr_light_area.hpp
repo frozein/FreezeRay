@@ -24,6 +24,7 @@ public:
 	LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transform, const vec3& intensity);
 
 	virtual vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
+	virtual float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
 	virtual vec3 power() const override;
 
 	virtual std::shared_ptr<const Mesh> get_mesh(mat4& transform) const override;

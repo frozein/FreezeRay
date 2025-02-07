@@ -21,6 +21,7 @@ public:
 	LightEnvironment(const std::string& path, float worldRadius = 1.0f);
 
 	vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
+	float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
 	vec3 power() const override;
 
 	vec3 le(const IntersectionInfo& hitInfo, const vec3& w) const override;

@@ -19,7 +19,8 @@ public:
 	LightDirectional(const vec3& dir, const vec3& intensity, float worldRadius = 1.0f);
 
 	vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
-	vec3 power() const;
+	float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
+	vec3 power() const override;
 
 private:
 	vec3 m_dir;

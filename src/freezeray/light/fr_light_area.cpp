@@ -57,6 +57,11 @@ vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& 
 	return m_intensity;
 }
 
+float LightArea::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
+{
+	return 1.0f / m_area;
+}
+
 vec3 LightArea::le(const IntersectionInfo& hitInfo, const vec3& w) const
 {
 	return m_intensity;

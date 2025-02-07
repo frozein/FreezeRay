@@ -19,7 +19,8 @@ public:
 	LightPoint(const vec3& pos, const vec3& intensity);
 
 	vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
-	vec3 power() const;
+	float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
+	vec3 power() const override;
 
 private:
 	vec3 m_pos;
