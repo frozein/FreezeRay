@@ -2,11 +2,85 @@
 #include "freezeray/fr_ray.hpp"
 #include "freezeray/fr_globals.hpp"
 #include <math.h>
+#include <thread>
+#include <mutex>
+#include <queue>
+#include <atomic>
 
 //-------------------------------------------//
 
 namespace fr
 {
+
+#define WORKGROUP_SIZE 128
+
+//-------------------------------------------//
+
+struct WorkGroup
+{
+	uint32_t startX;
+	uint32_t startY;
+	uint32_t endX;
+	uint32_t endY;
+};
+
+class ThreadPool
+{
+public:
+	ThreadPool(uint64_t numWorkers, const std::queue<WorkGroup>& workGroups, std::function<void(const WorkGroup&)> process) :
+		m_workGroups(workGroups), m_process(process)
+	{
+		m_activeThreads = numWorkers;
+
+		for(uint64_t i = 0; i < numWorkers; i++)
+		{
+			m_workers.emplace_back(
+				[this] {
+					while(true)
+					{
+						WorkGroup group;
+
+						{
+							std::unique_lock<std::mutex> lock(m_queueMutex);
+							
+							if(m_workGroups.empty())
+							{
+								m_activeThreads.fetch_sub(1);
+								return;
+							}
+
+							group = m_workGroups.front();
+							m_workGroups.pop();
+						}
+
+						m_process(group);
+					}
+				}
+			);
+		}
+	}
+
+	bool complete()
+	{
+		return m_activeThreads.load() == 0;
+	}
+
+	~ThreadPool()
+	{
+		for(uint64_t i = 0; i < m_workers.size(); i++)
+			m_workers[i].join();
+	}
+
+private:
+	std::vector<std::thread> m_workers;
+	std::atomic<uint64_t> m_activeThreads = 0;
+
+	std::queue<WorkGroup> m_workGroups;
+	std::mutex m_queueMutex;
+	std::function<void(const WorkGroup&)> m_process;
+};
+
+//-------------------------------------------//
 
 Renderer::Renderer(const std::shared_ptr<const Camera>& cam, uint32_t imageW, uint32_t imageH) : 
 	m_cam(cam),
@@ -23,39 +97,106 @@ Renderer::~Renderer()
 
 }
 
-void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<void(uint32_t, uint32_t, vec3)> writePixel, std::function<void()> display)
+void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<void(uint32_t, uint32_t, vec3)> writePixel, std::function<void()> display, uint32_t displayFrequency)
 {
-	//render from top -> bottom (looks more natural)
-	for(int32_t y = m_imageH - 1; y >= 0; y--)
+	//generate workgroups:
+	//---------------
+	std::queue<WorkGroup> workGroups;
+
+	uint32_t xDivs = (m_imageW + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
+	uint32_t yDivs = (m_imageH + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
+
+	uint32_t xBaseSize = m_imageW / xDivs;
+	uint32_t xRemain   = m_imageW % xDivs;
+
+	uint32_t yBaseSize = m_imageH / yDivs;
+	uint32_t yRemain   = m_imageH % yDivs;
+
+	for(uint32_t y = 0; y < yDivs; y++)
+	for(uint32_t x = 0; x < xDivs; x++)
 	{
-		for(uint32_t x = 0; x < m_imageW; x++)
-		{
-			//generate ray for current pixel:
-			//---------------
-			Ray cameraRay = get_camera_ray(x, (uint32_t)y);
-			Ray cameraRayDifferentialX = get_camera_ray(x + 1, (uint32_t)y);
-			Ray cameraRayDifferentialY = get_camera_ray(x, (uint32_t)y + 1);
+		uint32_t idx = x + xDivs * y;
 
-			cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
+		uint32_t xMin = x * xBaseSize + std::min(x, xRemain);
+		uint32_t yMin = y * yBaseSize + std::min(y, yRemain);
 
-			//get color of pixel:
-			//---------------
-			vec3 color = li(scene, cameraRay);
+		uint32_t xMax = xMin + xBaseSize + (x < xRemain ? 1 : 0) - 1;
+		uint32_t yMax = yMin + yBaseSize + (y < yRemain ? 1 : 0) - 1;
 
-			//write color to given buffer:
-			//---------------
-			color.r = std::max(std::min(color.r, 1.0f), 0.0f);
-			color.g = std::max(std::min(color.g, 1.0f), 0.0f);
-			color.b = std::max(std::min(color.b, 1.0f), 0.0f);
-			color = linear_to_srgb(color);
-
-			writePixel(x, (uint32_t)y, color);
-		}
-
-		//display after each scanline
-		//---------------
-		display();
+		workGroups.push( {xMin, yMin, xMax, yMax} );
 	}
+
+	//define processing func:
+	//---------------
+	bool shouldDisplay = false;
+	std::condition_variable displayCV;
+	std::condition_variable displayCVmain;
+	std::mutex displayMutex;
+
+	std::atomic<uint64_t> threadsRendering = 0;
+
+	auto processWorkgroup = [&](const WorkGroup& group) {
+		for(int32_t y = group.endY; y >= (int32_t)group.startY; y--)
+		{
+			//wait for main thread to display
+			{
+				std::unique_lock<std::mutex> lock(displayMutex);
+				displayCV.wait(lock, [&]{ return !shouldDisplay; });
+			}
+
+			//increment threads rendering
+			threadsRendering.fetch_add(1);
+
+			for(uint32_t x = group.startX; x <= group.endX; x++)
+			{
+				//generate ray for current pixel
+				Ray cameraRay = get_camera_ray(x, (uint32_t)y);
+				Ray cameraRayDifferentialX = get_camera_ray(x + 1, (uint32_t)y);
+				Ray cameraRayDifferentialY = get_camera_ray(x, (uint32_t)y + 1);
+	
+				cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
+	
+				//get color of pixel
+				vec3 color = li(scene, cameraRay);
+	
+				//write color to given buffer
+				color.r = std::max(std::min(color.r, 1.0f), 0.0f);
+				color.g = std::max(std::min(color.g, 1.0f), 0.0f);
+				color.b = std::max(std::min(color.b, 1.0f), 0.0f);
+				color = linear_to_srgb(color);
+	
+				writePixel(x, (uint32_t)y, color);
+			}
+	
+			//decrement threads rendering, notify main thread
+			if(threadsRendering.fetch_sub(1) == 1)
+				displayCVmain.notify_one();
+		}
+	};
+
+	//start thread groups, display periodically:
+	//---------------
+	uint64_t numThreads = std::thread::hardware_concurrency();
+	ThreadPool pool(numThreads, workGroups, processWorkgroup);
+
+	while(!pool.complete())
+	{
+		std::this_thread::sleep_for(std::chrono::seconds(displayFrequency));
+
+		shouldDisplay = true;
+
+		std::unique_lock<std::mutex> lock(displayMutex);
+		displayCVmain.wait(lock, [&]{ return threadsRendering.load() == 0; });
+
+		display();
+
+		shouldDisplay = false;
+		displayCV.notify_all();
+	}
+
+	//display final result:
+	//---------------
+	display();
 }
 
 //-------------------------------------------//

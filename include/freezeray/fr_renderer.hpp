@@ -30,10 +30,10 @@ public:
 	//the current result to be displayed
 	void render(const std::shared_ptr<const Scene>& scene,
 	            std::function<void(uint32_t x, uint32_t y, vec3 color)> writePixel, 
-				std::function<void()> display);
+				std::function<void()> display, uint32_t displayFrequency = 1);
 
 protected:
-	virtual vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) = 0;
+	virtual vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const = 0;
 
 	vec3 sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
 	vec3 sample_one_light_mis(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;

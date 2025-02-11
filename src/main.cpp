@@ -111,9 +111,9 @@ int main(int argc, char** argv)
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		1,
+		100,
 		true,
-		false
+		true
 	);
 
 	//start rendering:
@@ -147,7 +147,7 @@ int main(int argc, char** argv)
 
 	SDL_LockSurface(windowSurface);
 	
-	renderer->render(scene, writePixel, display);
+	renderer->render(scene, writePixel, display, 3);
 
 	SDL_UnlockSurface(windowSurface);
 

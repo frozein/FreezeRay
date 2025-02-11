@@ -27,8 +27,8 @@ private:
 	bool m_importanceSampling;
 	bool m_mis;
 
-	vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) override;
-	vec3 trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray);
+	vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
+	vec3 trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
 };
 
 }; //namespace fr

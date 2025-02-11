@@ -21,7 +21,7 @@ RendererPath::~RendererPath()
 
 }
 
-vec3 RendererPath::li(const std::shared_ptr<const Scene>& scene, const Ray& ray)
+vec3 RendererPath::li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
@@ -30,7 +30,7 @@ vec3 RendererPath::li(const std::shared_ptr<const Scene>& scene, const Ray& ray)
 	return li / (float)m_samplesPerPixel;
 }
 
-vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray)
+vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
 	vec3 light = vec3(0.0f);
 	vec3 mult = vec3(1.0f);
