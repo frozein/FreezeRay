@@ -15,23 +15,24 @@ namespace fr
 {
 
 template<typename T>
-class Distribution
+class DistributionDiscrete
 {
 public:
-	Distribution(const std::vector<std::pair<T, float>>& pmf, float totalDensity = 1.0f);
+	DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf, float totalDensity = 1.0f);
 
-	const T& sample(float u) const;
+	const T& sample(float u, float& pdf) const;
 
 private:
+	std::vector<std::pair<T, float>> m_pmf;
 	std::vector<float> m_acceptanceTable;
 	std::vector<uint32_t> m_aliasTable;
-	std::vector<T> m_domain;
 };
 
 //-------------------------------------------//
 
 template<typename T>
-Distribution<T>::Distribution(const std::vector<std::pair<T, float>>& pmf, float totalDensity)
+DistributionDiscrete<T>::DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf, float totalDensity) :
+	m_pmf(pmf)
 {
 	//validate:
 	//---------------
@@ -43,7 +44,8 @@ Distribution<T>::Distribution(const std::vector<std::pair<T, float>>& pmf, float
 
 	//initialize domain, create scaled pmf, create small/large worklists:
 	//---------------
-	m_domain.resize(pmf.size());
+	m_acceptanceTable.resize(pmf.size());
+	m_aliasTable.resize(pmf.size());
 
 	std::vector<float> scaledDensity(pmf.size());
 
@@ -52,10 +54,9 @@ Distribution<T>::Distribution(const std::vector<std::pair<T, float>>& pmf, float
 
 	for(uint32_t i = 0; i < pmf.size(); i++) 
 	{
-		m_domain[i] = pmf[i].first;
-
-		float density = pmf[i].second / totalDensity;
-		scaledDensity[i] = density * pmf.size();
+		m_pmf[i].second /= totalDensity;
+		float density = m_pmf[i].second;
+		scaledDensity[i] = density * m_pmf.size();
 
 		if(scaledDensity[i] < 1.0f)
 			small.push_back(i);
@@ -70,9 +71,6 @@ Distribution<T>::Distribution(const std::vector<std::pair<T, float>>& pmf, float
 
 	//process small/large worklists:
 	//---------------
-	m_acceptanceTable.resize(pmf.size());
-	m_aliasTable.resize(pmf.size());
-
 	while(!small.empty() && !large.empty()) 
 	{
 		uint32_t s = small.back(); 
@@ -105,16 +103,17 @@ Distribution<T>::Distribution(const std::vector<std::pair<T, float>>& pmf, float
 }
 
 template<typename T>
-const T& Distribution<T>::sample(float u) const
+const T& DistributionDiscrete<T>::sample(float u, float& pdf) const
 {
-	float select = u * m_domain.size();
-	uint32_t selectIdx = std::min((uint32_t)select, (uint32_t)m_domain.size() - 1);
+	float select = u * m_pmf.size();
+	uint32_t selectIdx = std::min((uint32_t)select, (uint32_t)m_pmf.size() - 1);
 
 	float acceptanceProb = select - selectIdx;
 	if(acceptanceProb > m_acceptanceTable[selectIdx])
 		selectIdx = m_aliasTable[selectIdx];
 
-	return m_domain[selectIdx];
+	pdf = m_pmf[selectIdx].second;
+	return m_pmf[selectIdx].first;
 }
 
 }; //namespace fr

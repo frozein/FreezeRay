@@ -85,10 +85,10 @@ int main(int argc, char** argv)
 
 	std::vector<fr::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
 
-	std::shared_ptr<const fr::LightDirectional> light1 = std::make_shared<fr::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
-	std::shared_ptr<const fr::LightPoint> light2 = std::make_shared<fr::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
+	//std::shared_ptr<const fr::LightDirectional> light1 = std::make_shared<fr::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
+	//std::shared_ptr<const fr::LightPoint> light2 = std::make_shared<fr::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
 	std::shared_ptr<const fr::LightEnvironment> light3 = std::make_shared<fr::LightEnvironment>("assets/test_skybox.hdr");
-	
+
 	//std::shared_ptr<const fr::Mesh> lightMesh1 = fr::Mesh::unit_square();
 	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
 	//std::shared_ptr<const fr::LightArea> light1 = std::make_shared<fr::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
@@ -100,8 +100,8 @@ int main(int argc, char** argv)
 	//create renderer:
 	//---------------
 	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(0.0f, 0.0f, -3.0f), 
-		normalize(vec3(0.0f, 0.0f, 1.0f)), 
+		vec3(0.0f, 0.0f, 3.0f), 
+		normalize(vec3(0.0f, 0.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 		50,
 		100,
 		true,
-		true
+		false
 	);
 
 	//start rendering:

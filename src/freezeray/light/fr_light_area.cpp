@@ -41,16 +41,16 @@ LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transf
 		m_area += triArea;
 	}
 
-	m_triDistribution = std::make_unique<Distribution<uint32_t>>(pmf, m_area);
+	m_triDistribution = std::make_unique<DistributionDiscrete<uint32_t>>(pmf, m_area);
 }
 
 vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
-	vec3 pos = sample_mesh_area(u);
+	vec3 pos = sample_mesh_area(u, pdf);
 	vec3 toLight = pos - hitInfo.worldPos;
 
 	wiWorld = normalize(toLight);
-	pdf = 1.0f / m_area;
+	pdf *= dot(toLight, toLight) / std::abs(dot(-1.0f * wiWorld, hitInfo.worldNormal));
 	vis.infinite = false;
 	vis.endPos = pos;
 
@@ -78,11 +78,11 @@ std::shared_ptr<const Mesh> LightArea::get_mesh(mat4& transform) const
 	return m_mesh;
 }
 
-vec3 LightArea::sample_mesh_area(const vec3& u) const
+vec3 LightArea::sample_mesh_area(const vec3& u, float& pdf) const
 {
 	//get triangle:
 	//---------------
-	uint32_t triIdx = m_triDistribution->sample(u.x);
+	uint32_t triIdx = m_triDistribution->sample(u.x, pdf);
     
 	uint32_t idx0;
     uint32_t idx1;
@@ -104,6 +104,11 @@ vec3 LightArea::sample_mesh_area(const vec3& u) const
     float b0 = 1.0f - sqrtR1;
 	float b1 = u.z * sqrtR1;
     float b2 = 1.0f - b0 - b1;
+
+	//update pdf to account for tri area, return:
+	//---------------
+	float triArea = length(cross(v1 - v0, v2 - v0)) * 0.5f;
+	pdf /= triArea;
 
     return b0 * v0 + b1 * v1 + b2 * v2;
 }

@@ -312,9 +312,19 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 			IntersectionInfo hitInfoBsdf;
 			
 			if(scene->intersect(ray, hitInfoBsdf))
-				li = hitInfoBsdf.light ? hitInfoBsdf.light->le(hitInfoBsdf, -1.0f * wi) : vec3(0.0f);
+			{
+				if(hitInfoBsdf.light.get() == light.get())
+					li = light->le(hitInfoBsdf, -1.0f * wi);
+				else
+					li = vec3(0.0f);
+			}
 			else
-				li = light->le(hitInfoBsdf, -1.0f * wi);
+			{
+				if(light->is_infinite())
+					li = light->le(hitInfoBsdf, -1.0f * wi);
+				else
+					li = vec3(0.0f);
+			}
 
 			//add light contrib
 			ld = ld + weight * (li * f / pdfScattering);

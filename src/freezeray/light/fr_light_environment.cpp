@@ -20,7 +20,7 @@ LightEnvironment::LightEnvironment(std::unique_ptr<const vec3[]> image, uint32_t
 
 	//generate texel distribution:
 	//---------------
-	create_distribution();
+	create_texel_distribution();
 }
 
 LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
@@ -28,8 +28,6 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 {
 	//load image:
 	//---------------
-	stbi_set_flip_vertically_on_load(true);
-
 	int width;
 	int height;
 	int numChannels;
@@ -49,18 +47,16 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 
 	//generate texel distribution:
 	//---------------
-	create_distribution();
+	create_texel_distribution();
 }
 
 vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
 	//sample texel:
 	//---------------
-	TexelCoordinate texel = m_texelDistribution->sample(u.x);
-	vec2 uv = vec2(
-		(texel.u + u.y) / (float)m_width, 
-		(texel.v + u.z) / (float)m_height
-	);
+	TexelCoordinate texel;
+	vec2 uv = sample_texel_area(u, texel, pdf);
+	vec3 li = get_texel(texel.u, texel.v);
 
 	//uv -> spherical:
 	//---------------
@@ -71,15 +67,10 @@ vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 	float sinPhi = std::sin(phi);
 	float cosPhi = std::cos(phi);
 
-	//get texel value:
-	//---------------
-	vec3 li = get_texel(texel.u, texel.v) * sinPhi;
-	float lum = luminance(li);
-
 	//return:
 	//---------------
 	wiWorld = vec3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
-	pdf = lum / m_luminance;
+	pdf /= (2.0f * FR_PI * FR_PI * sinPhi);
 	vis.infinite = true;
 	vis.endPos = vec3(0.0f);
 
@@ -93,14 +84,20 @@ float LightEnvironment::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) c
 		theta += FR_2_PI;
 
 	float phi = std::acos(w.y);
+	float sinPhi = std::sin(phi);
 	
 	uint32_t u = (uint32_t)((theta * FR_INV_2_PI) * m_width);
-	uint32_t v = (uint32_t)((theta * FR_INV_2_PI) * m_height);
+	uint32_t v = (uint32_t)((phi * FR_INV_2_PI) * m_height);
 
-	vec3 li = get_texel(u, v) * std::sin(phi);
-	float lum = luminance(li);
+	vec3 li = get_texel(u, v);
+	float lum = luminance(li) * sinPhi;
+	float texelArea = sinPhi / m_area;
 
-	return lum / m_luminance;
+	float pdf = lum / m_luminance;
+	pdf /= texelArea;
+	pdf /= (2.0f * FR_PI * FR_PI * std::sin(phi));
+
+	return pdf;
 }
 
 vec3 LightEnvironment::power() const
@@ -110,11 +107,13 @@ vec3 LightEnvironment::power() const
 
 vec3 LightEnvironment::le(const IntersectionInfo& hitInfo, const vec3& w) const
 {
-	float u = std::atan2(w.z, w.x);
+	vec3 li = -1.0f * w;
+
+	float u = std::atan2(li.z, li.x);
 	if(u < 0.0f)
 		u += FR_2_PI;
-	
-	float v = std::acos(w.y);
+
+	float v = std::acos(li.y);
 
 	return bilinear(vec2(u * FR_INV_2_PI, v * FR_INV_PI));
 }
@@ -144,12 +143,26 @@ vec3 LightEnvironment::bilinear(const vec2& uv) const
 	            du  * ((1 - dv) * get_texel(u0 + 1, v0) + dv * get_texel(u0 + 1, v0 + 1));
 }
 
-void LightEnvironment::create_distribution()
+vec2 LightEnvironment::sample_texel_area(const vec3& u, TexelCoordinate& texel, float& pdf) const
+{
+	texel = m_texelDistribution->sample(u.x, pdf);
+	vec2 uv = vec2(
+		(texel.u + u.y) / (float)m_width, 
+		(texel.v + u.z) / (float)m_height
+	);
+
+	float phi = uv.y * FR_PI;
+	float texelArea = std::sin(phi) / m_area;
+
+	pdf /= texelArea;
+	return uv;
+}
+
+void LightEnvironment::create_texel_distribution()
 {
 	std::vector<std::pair<TexelCoordinate, float>> pmf(m_width * m_height);
 	
-	float area = 0.0f;
-
+	m_area = 0.0f;
 	m_luminance = 0.0f;
 	m_power = vec3(0.0f);
 
@@ -169,19 +182,12 @@ void LightEnvironment::create_distribution()
 			m_power = m_power + texelValue;
 		}
 
-		area += m_width * sinTheta;
+		m_area += m_width * sinTheta;
 	}
 
-	m_texelDistribution = std::make_unique<Distribution<TexelCoordinate>>(pmf, m_luminance);
+	m_texelDistribution = std::make_unique<DistributionDiscrete<TexelCoordinate>>(pmf, m_luminance);
 
-	for(uint32_t i = 0; i < 1000; i++)
-	{
-		float test = (float)rand() / RAND_MAX;
-		
-	}
-
-	m_luminance /= area;
-	m_power = m_power / area;
+	m_power = m_power / m_area;
 }
 
 }; //namespace fr

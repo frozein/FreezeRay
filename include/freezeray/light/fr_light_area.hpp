@@ -36,9 +36,9 @@ private:
 	vec3 m_intensity;
 
 	float m_area;
-	std::unique_ptr<Distribution<uint32_t>> m_triDistribution;
+	std::unique_ptr<DistributionDiscrete<uint32_t>> m_triDistribution;
 
-	vec3 sample_mesh_area(const vec3& u) const;
+	vec3 sample_mesh_area(const vec3& u, float& pdf) const;
 };
 
 }; //namespace fr
