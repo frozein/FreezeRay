@@ -297,16 +297,22 @@ bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, Inters
 	else
 		uv = vec2(0.0f);
 
+	vec3 geomNormal = cross(minV1 - minV0, minV2 - minV0); //geometric normal
 	if((m_vertAttribs & VERTEX_ATTRIB_NORMAL) != 0)
 	{
 		const vec3& normal0 = *reinterpret_cast<const vec3*>(&verts[minIdx0 + m_vertNormalOffset]);
 		const vec3& normal1 = *reinterpret_cast<const vec3*>(&verts[minIdx1 + m_vertNormalOffset]);
 		const vec3& normal2 = *reinterpret_cast<const vec3*>(&verts[minIdx2 + m_vertNormalOffset]);
 
-		normal = normal0 * b2 + normal1 * minB0 + normal2 * minB1;
+		//ensure that shaded normal is in "same hemisphere" as geom normal to avoid shading errors
+		vec3 shadingNormal = normal0 * b2 + normal1 * minB0 + normal2 * minB1;
+		if(dot(rayDir, geomNormal) * dot(rayDir, shadingNormal) < 0.0f)
+			normal = geomNormal;
+		else
+			normal = shadingNormal;
 	}
 	else
-		normal = cross(minV1 - minV0, minV2 - minV0); //calculate flat-shaded normal
+		normal = geomNormal;
 
 	//calculate derivatives:
 	//---------------
