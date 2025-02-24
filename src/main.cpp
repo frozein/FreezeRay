@@ -63,8 +63,8 @@ int main(int argc, char** argv)
 
 	//create scene:
 	//---------------
-	std::shared_ptr<const fr::Mesh> mesh1 = fr::Mesh::unit_square();
-	std::shared_ptr<const fr::Mesh> mesh2 = fr::Mesh::unit_sphere(2, true);
+	std::shared_ptr<const fr::Mesh> mesh1 = fr::Mesh::from_unit_square();
+	std::shared_ptr<const fr::Mesh> mesh2 = fr::Mesh::from_unit_sphere(2, true);
 
 	std::shared_ptr<fr::Texture<vec3>> tex1 = std::make_shared<fr::TextureConstant<vec3>>(vec3(1.0f));
 	std::shared_ptr<fr::Texture<float>> tex2 = std::make_shared<fr::TextureConstant<float>>(0.25f);
@@ -113,7 +113,7 @@ int main(int argc, char** argv)
 		50,
 		100,
 		true,
-		false
+		true
 	);
 
 	//start rendering:

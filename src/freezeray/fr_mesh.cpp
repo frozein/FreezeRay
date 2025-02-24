@@ -1,8 +1,16 @@
 #include "freezeray/fr_mesh.hpp"
-#include "freezeray/fr_globals.hpp"
+
 #define QOBJ_IMPLEMENTATION
 #include "freezeray/quickobj.h"
+#include "freezeray/fr_globals.hpp"
+#include <algorithm>
 
+//-------------------------------------------//
+
+#define FR_MESH_KDTREE_MAX_TRIS_PER_NODE 16
+#define FR_MESH_KDTREE_TRAVERSAL_COST 1
+#define FR_MESH_KDTREE_ISECT_COST 2
+#define FR_MESH_KDTREE_EMPTY_BONUS 0.5f
 
 //-------------------------------------------//
 
@@ -17,7 +25,7 @@ std::shared_ptr<const Mesh> Mesh::m_unitSquare = Mesh::gen_unit_square();
 
 Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::unique_ptr<uint32_t[]> faceIndices, 
            std::unique_ptr<uint32_t[]> vertIndices, std::unique_ptr<float[]> verts, std::string material,
-		   uint32_t vertStride, uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
+           uint32_t vertStride, uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
 	m_verts(std::move(verts)),
 	m_material(material),
 	m_vertAttribs(vertexAttribs),
@@ -50,14 +58,15 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numFaces, std::unique_ptr<uint32_t[]
 		k += faceIndices[i];
 	}
 
-	//setup strides and offsets if not specified:
+	//setup strides and offsets, build kd tree:
 	//---------------
-	setup_strides_offsets();
+	vert_attribs_setup();
+	kdtree_build();
 }
 
 Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::unique_ptr<uint32_t[]> indices, 
            std::unique_ptr<float[]> verts, std::string material, uint32_t vertStride,
-		   uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
+           uint32_t vertPosOffset, uint32_t vertUvOffset, uint32_t vertNormalOffset) :
 	m_numTris(numTris),
 	m_indices(std::move(indices)),
 	m_verts(std::move(verts)),
@@ -68,7 +77,8 @@ Mesh::Mesh(uint32_t vertexAttribs, uint32_t numTris, std::unique_ptr<uint32_t[]>
 	m_vertUvOffset(vertUvOffset),
 	m_vertNormalOffset(vertNormalOffset)
 {
-	setup_strides_offsets();
+	vert_attribs_setup();
+	kdtree_build();
 }
 
 const std::string& Mesh::get_material() const
@@ -116,50 +126,153 @@ vec3 Mesh::get_vert_normal_at(uint32_t idx) const
 	return *reinterpret_cast<const vec3*>(&m_verts.get()[idx * m_vertStride + m_vertNormalOffset]);
 }
 
-bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const
+bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const
 {
-	if(!m_valid)
+	//get ray info:
+	//---------------
+	vec3 rayDir = ray.direction();
+	vec3 rayPos = ray.origin();
+	vec3 invRayDir = 1.0f / rayDir;
+
+	//compute intersection with bounding box:
+	//---------------
+	vec3 tMinKD3 = (m_kdTreeBounds.min - rayPos) * invRayDir;
+	vec3 tMaxKD3 = (m_kdTreeBounds.max - rayPos) * invRayDir;
+
+	vec3 t1 = min(tMinKD3, tMaxKD3);
+	vec3 t2 = max(tMinKD3, tMaxKD3);
+
+	float tMinKD;
+	if(t1.x > t1.y)
+	{
+		if(t1.x > t1.z)
+			tMinKD = t1.x;
+		else
+			tMinKD = t1.z;
+	}
+	else
+	{
+		if(t1.y > t1.z)
+			tMinKD = t1.y;
+		else
+			tMinKD = t1.z;
+	}
+
+	float tMaxKD = std::min(std::min(t2.x, t2.y), t2.z);
+
+	//skip if bb wasnt hit
+	if(tMaxKD < tMinKD || tMaxKD <= 0.0f)
 		return false;
 
-	//declare attributes belonging to closest vert:
+	//declare attributes for hit triangle:
 	//---------------
 	float* verts = m_verts.get();
 	
 	bool hit = false;
 
-	minT = INFINITY;
+	tMin = INFINITY;
 	uint32_t minIdx0, minIdx1, minIdx2;
 	vec3 minV0, minV1, minV2;
 	float minB0, minB1;
 
-	//loop over all verts, check for closest hit:
+	//traverse kd tree in order:
 	//---------------
-	for(uint32_t i = 0; i < m_numTris; i++)
+	struct KDnodeToVisit
 	{
-		uint32_t triIdx = i * 3;
-		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
-		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
-		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
+		uint32_t nodeIdx;
+		float tMin;
+		float tMax;
+	};
 	
-		const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertPosOffset]);
-		const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertPosOffset]);
-		const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertPosOffset]);
+	const uint32_t MAX_KD_TRAVERSAL_DEPTH = 64;
+	KDnodeToVisit nodesToVisit[MAX_KD_TRAVERSAL_DEPTH];
+	uint32_t toVisitPos = 0;
 
-		float t;
-		float b0, b1; //barycentric coordinates
-		if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < minT)
+	uint32_t nodeIdx = 0;
+	while(true)
+	{
+		//early exit if intersection was already found
+		if(tMin < tMaxKD)
+			break;
+
+		//get node, process interior or leaf
+		const KDtreeNode* node = &m_kdTree[nodeIdx];
+		if(!node->is_leaf())
 		{
-			hit |= true;
+			uint32_t axis = node->get_split_axis();
+			float tPlane = (node->get_split_pos() - rayPos[axis]) * invRayDir[axis];
 
-			minT = t;
-			minIdx0 = idx0;
-			minIdx1 = idx1;
-			minIdx2 = idx2;
-			minV0 = v0;
-			minV1 = v1;
-			minV2 = v2;
-			minB0 = b0;
-			minB1 = b1;
+			uint32_t firstChild;
+			uint32_t secondChild;
+			bool belowFirst = (rayPos[axis] < node->get_split_pos()) ||
+				(rayPos[axis] == node->get_split_pos() && rayDir[axis] <= 0.0f);
+			if(belowFirst)
+			{
+				firstChild = nodeIdx + 1;
+				secondChild = node->get_above_child_idx();
+			}
+			else
+			{
+				firstChild = node->get_above_child_idx();
+				secondChild = nodeIdx + 1;
+			}
+
+			if(tPlane > tMaxKD || tPlane <= 0.0f)
+				nodeIdx = firstChild;
+			else if(tPlane < tMinKD)
+				nodeIdx = secondChild;
+			else
+			{
+				nodesToVisit[toVisitPos].nodeIdx = secondChild;
+				nodesToVisit[toVisitPos].tMin = tPlane;
+				nodesToVisit[toVisitPos].tMax = tMaxKD;
+				toVisitPos++;
+
+				nodeIdx = firstChild;
+				tMaxKD = tPlane;
+			}
+		}
+		else
+		{
+			uint32_t numTris = node->get_num_tris();
+			for(uint32_t i = 0; i < numTris; i++)
+			{
+				uint32_t triIdx = m_kdTreeTriIndices[node->get_tri_indices_offset() + i] * 3;
+				uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
+				uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
+				uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
+			
+				const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertPosOffset]);
+				const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertPosOffset]);
+				const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertPosOffset]);
+		
+				float t;
+				float b0, b1; //barycentric coordinates
+				if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < tMin)
+				{
+					hit |= true;
+		
+					tMin = t;
+					minIdx0 = idx0;
+					minIdx1 = idx1;
+					minIdx2 = idx2;
+					minV0 = v0;
+					minV1 = v1;
+					minV2 = v2;
+					minB0 = b0;
+					minB1 = b1;
+				}
+			}
+
+			if(toVisitPos > 0)
+			{
+				toVisitPos--;
+				nodeIdx = nodesToVisit[toVisitPos].nodeIdx;
+				tMinKD = nodesToVisit[toVisitPos].tMin;
+				tMaxKD = nodesToVisit[toVisitPos].tMax;
+			}
+			else
+				break;
 		}
 	}
 
@@ -199,7 +312,7 @@ bool Mesh::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, Inters
 	//---------------
 	if(ray.has_differentials())
 	{
-		vec3 p = ray.at(minT);
+		vec3 p = ray.at(tMin);
 
 		float tx;
 		float b0x, b1x;
@@ -274,7 +387,7 @@ std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 			attribs |= VERTEX_ATTRIB_NORMAL;
 
 		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, std::move(indices), std::move(verts), "", 
-		                 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
+						 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
 	//cleanup:
@@ -284,7 +397,7 @@ std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 	return result;
 }
 
-std::shared_ptr<const Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
+std::shared_ptr<const Mesh> Mesh::from_unit_sphere(uint32_t numSubdivisions, bool smoothNormals)
 {
 	std::shared_ptr<const Mesh> mesh;
 	if(m_unitSpheres.find({numSubdivisions, smoothNormals}) != m_unitSpheres.end())
@@ -299,19 +412,19 @@ std::shared_ptr<const Mesh> Mesh::unit_sphere(uint32_t numSubdivisions, bool smo
 }
 
 
-std::shared_ptr<const Mesh> Mesh::unit_cube()
+std::shared_ptr<const Mesh> Mesh::from_unit_cube()
 {
 	return m_unitCube;
 }
 
-std::shared_ptr<const Mesh> Mesh::unit_square()
+std::shared_ptr<const Mesh> Mesh::from_unit_square()
 {
 	return m_unitSquare;
 }
 
 //-------------------------------------------//
 
-bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const
+bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v)
 {
 	vec3 v0v1 = v1 - v0;
 	vec3 v0v2 = v2 - v0;
@@ -336,7 +449,7 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 	return t > FR_EPSILON;
 }
 
-void Mesh::intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v) const
+void Mesh::intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v)
 {
 	vec3 v0v1 = v1 - v0;
 	vec3 v0v2 = v2 - v0;
@@ -354,17 +467,12 @@ void Mesh::intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, co
 	t = dot(v0v2, qvec) * invDet;
 }
 
-void Mesh::setup_strides_offsets()
+void Mesh::vert_attribs_setup()
 {
 	//vertices must have a position, or the mesh isnt renderable:
 	//---------------
 	if((m_vertAttribs & VERTEX_ATTRIB_POSITION) == 0)
-	{
-		//TODO: proper error logging/handling
-		std::cout << "ERROR: vertices MUST contain the POSITION attribute" << std::endl;
-		m_valid = false;
-		return;
-	}
+		throw std::runtime_error("vertices MUST contain the POSITION attribute" );
 
 	//calculate stride:
 	//---------------
@@ -406,6 +514,278 @@ void Mesh::setup_strides_offsets()
 		if((m_vertAttribs & VERTEX_ATTRIB_UV) != 0)
 			m_vertNormalOffset += 2;
 	}
+}
+
+//-------------------------------------------//
+
+void Mesh::KDtreeNode::init_interior(uint32_t axis, uint32_t _aboveChildIdx, float splitPos)
+{
+	flags = axis;
+	split = splitPos;
+	aboveChildIdx |= (_aboveChildIdx << 2);
+}
+
+void Mesh::KDtreeNode::init_leaf(uint32_t _numTris, uint32_t* tris, std::vector<uint32_t>& triIndices)
+{
+	flags = 3;
+	numTris |= (_numTris << 2);
+
+	triIndicesOffset = (uint32_t)triIndices.size();
+	for(uint32_t i = 0; i < numTris; ++i)
+		triIndices.push_back(tris[i]);
+}
+
+void Mesh::kdtree_build()
+{
+	//compute heuristic for maximum tree depth:
+	//---------------
+	uint32_t maxDepth = (uint32_t)std::roundf(8.0f + 1.3f * std::log2f((float)m_numTris));
+
+	//compute bounds for each triangle:
+	//---------------
+	std::vector<bound3> triBounds(m_numTris);
+	bound3 bounds;
+
+	for(uint32_t i = 0; i < m_numTris; i++)
+	{
+		uint32_t triIdx = i * 3;
+		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
+		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
+		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
+
+		const vec3& v0 = *reinterpret_cast<const vec3*>(&m_verts.get()[idx0 + m_vertPosOffset]);
+		const vec3& v1 = *reinterpret_cast<const vec3*>(&m_verts.get()[idx1 + m_vertPosOffset]);
+		const vec3& v2 = *reinterpret_cast<const vec3*>(&m_verts.get()[idx2 + m_vertPosOffset]);
+
+		vec3 triMin = min(min(v0, v1), v2);
+		vec3 triMax = max(max(v0, v1), v2);
+
+		triBounds[i] = { triMin, triMax };
+		bounds.min = min(bounds.min, triMin);
+		bounds.max = max(bounds.max, triMax);
+	}
+
+	m_kdTreeBounds = bounds;
+
+	//allocate scratch mem:
+	//---------------
+	std::unique_ptr<KDtreeBoundEdge[]> scratchBufBoundEdges[3];
+	for(uint32_t i = 0; i < 3; i++)
+		scratchBufBoundEdges[i] = std::unique_ptr<KDtreeBoundEdge[]>(new KDtreeBoundEdge[m_numTris * 2]);
+
+	std::unique_ptr<uint32_t[]> scratchBufTrisBelow(new uint32_t[m_numTris]);
+	std::unique_ptr<uint32_t[]> scratchBufTrisAbove(new uint32_t[(maxDepth + 1) * m_numTris]);
+
+	//begin recursive build:
+	//---------------
+	for(uint32_t i = 0; i < m_numTris; i++)
+		scratchBufTrisBelow[i] = i;
+
+	uint32_t treeSize = 0;
+	uint32_t treeNextFree = 0;
+
+	kdtree_build_recursive(
+		0, &treeSize, &treeNextFree, bounds, triBounds, m_numTris, scratchBufTrisBelow.get(), maxDepth,
+		scratchBufBoundEdges, scratchBufTrisBelow.get(), scratchBufTrisAbove.get()
+	);
+}
+
+void Mesh::kdtree_build_recursive(uint32_t idx, uint32_t* treeSize, uint32_t* treeNextFree,
+                                   const bound3& bounds, const std::vector<bound3>& triBounds, 
+                                   uint32_t numTris, uint32_t* tris, uint32_t depth, 
+                                   const std::unique_ptr<KDtreeBoundEdge[]> boundEdges[3],
+                                   uint32_t* trisBelow, uint32_t* trisAbove)
+{
+	//resize tree if needed:
+	//---------------
+	if(*treeNextFree >= *treeSize)
+	{
+		uint32_t newTreeSize = std::max(2 * (*treeSize), 256u);
+		std::unique_ptr<KDtreeNode[]> newTree = std::unique_ptr<KDtreeNode[]>(new KDtreeNode[newTreeSize]);
+
+		if(*treeSize > 0) 
+			std::memcpy(newTree.get(), m_kdTree.get(), (*treeSize) * sizeof(KDtreeNode));
+
+		m_kdTree = std::move(newTree);
+		*treeSize = newTreeSize;
+	}
+
+	(*treeNextFree)++;
+
+	//stop recursion if at max depth or max tris:
+	//---------------
+	if(numTris <= FR_MESH_KDTREE_MAX_TRIS_PER_NODE || depth == 0)
+	{
+		m_kdTree[idx].init_leaf(numTris, tris, m_kdTreeTriIndices);
+		return;
+	}
+
+	//find split axis + position:
+	//---------------
+	int32_t bestAxis = -1;
+	int32_t bestOffset = -1;
+	float minCost = INFINITY;
+
+	vec3 d = bounds.max - bounds.min;
+	float totalSA = 2.0f * (d.x * d.y + d.x * d.z + d.y * d.z);
+	float invTotalSA = 1.0f / totalSA;
+
+	uint32_t axes[3];
+	if(d.x > d.y)
+	{
+		if(d.x > d.z)
+		{
+			axes[0] = 0;
+			axes[1] = (d.y > d.z) ? 1 : 2;
+			axes[2] = (d.y > d.z) ? 2 : 1;
+		}
+		else
+		{
+			axes[0] = 2;
+			axes[1] = (d.x > d.y) ? 0 : 1;
+			axes[2] = (d.x > d.y) ? 1 : 0;
+		}
+	}
+	else
+	{
+		if(d.y > d.z)
+		{
+			axes[0] = 1;
+			axes[1] = (d.x > d.z) ? 0 : 2;
+			axes[2] = (d.x > d.z) ? 2 : 0;
+		}
+		else
+		{
+			axes[0] = 2;
+			axes[1] = (d.x > d.y) ? 0 : 1;
+			axes[2] = (d.x > d.y) ? 1 : 0;
+		}
+	}
+
+	for(uint32_t i = 0; i < 3; i++)
+	{
+		uint32_t axis = axes[i];
+
+		//init bound edges
+		for(uint32_t j = 0; j < numTris; j++)
+		{
+			uint32_t tri = tris[j];
+			const bound3& b = triBounds[tri];
+
+			boundEdges[axis][2 * j    ] = {tri, b.min[axis], true};
+			boundEdges[axis][2 * j + 1] = {tri, b.max[axis], false};
+		}
+
+		std::sort(&boundEdges[axis][0], &boundEdges[axis][2 * numTris],
+			[](const KDtreeBoundEdge &e0, const KDtreeBoundEdge &e1) -> bool {
+				if(e0.pos == e1.pos)
+				{
+					if(e0.start == e1.start)
+						return e0.tri < e1.tri;
+					else
+						return (int)e0.start < (int)e1.start;
+				}
+				else 
+					return e0.pos < e1.pos; 
+			}
+		);
+
+		//compute cost at each potential split, find the best
+		uint32_t numTrisBelow = 0;
+		uint32_t numTrisAbove = numTris;
+
+		for(uint32_t j = 0; j < 2 * numTris; j++)
+		{
+			if(!boundEdges[axis][j].start)
+				numTrisAbove--;
+
+			float edgePos = boundEdges[axis][j].pos;
+			if(edgePos > bounds.min[axis] && edgePos < bounds.max[axis])
+			{
+				//get sa
+				uint32_t otherAxis1 = (axis + 1) % 3;
+				uint32_t otherAxis2 = (axis + 2) % 3;
+				float belowSA = 2 * (
+					d[otherAxis1] * d[otherAxis2] +
+				    (edgePos - bounds.min[axis]) * (d[otherAxis1] + d[otherAxis2])
+				);
+				float aboveSA = 2 * (
+					d[otherAxis1] * d[otherAxis2] +
+					(bounds.max[axis] - edgePos) * (d[otherAxis1] + d[otherAxis2])
+				);
+
+				//compute cost
+				float belowP = belowSA * invTotalSA;
+				float aboveP = aboveSA * invTotalSA;
+				float emptyBonus = (numTrisAbove == 0 || numTrisBelow == 0) ? FR_MESH_KDTREE_EMPTY_BONUS : 0.0f;
+
+				float cost = FR_MESH_KDTREE_TRAVERSAL_COST + 
+					FR_MESH_KDTREE_ISECT_COST * (1.0f - emptyBonus) * (belowP * numTrisBelow + aboveP * numTrisAbove);
+				if(cost < minCost)
+				{
+					minCost = cost;
+					bestAxis = axis;
+					bestOffset = j;
+				}
+			}
+
+			if(boundEdges[axis][j].start)
+				numTrisBelow++;
+		}
+
+		//exit if any good split was found
+		if(bestAxis >= 0)
+			break;
+	}
+
+	//determine if we should split:
+	//---------------
+	float leafCost = FR_MESH_KDTREE_ISECT_COST * (float)numTris;
+
+	//TODO: better heuristic on whether to split/not split?
+	if(bestAxis == -1 || minCost > leafCost)
+	{
+		m_kdTree[idx].init_leaf(numTris, tris, m_kdTreeTriIndices);
+		return;
+	}
+	
+	//get triangles above and below split:
+	//---------------
+	uint32_t numTrisBelow = 0;
+	for(uint32_t i = 0; i < (uint32_t)bestOffset; i++)
+		if(boundEdges[bestAxis][i].start)
+			trisBelow[numTrisBelow++] = boundEdges[bestAxis][i].tri;
+
+	uint32_t numTrisAbove = 0;
+	for(uint32_t i = bestOffset + 1; i < 2 * numTris; i++)
+		if(!boundEdges[bestAxis][i].start)
+			trisAbove[numTrisAbove++] = boundEdges[bestAxis][i].tri;
+
+	//recursively build:
+	//---------------
+	bound3 belowBounds = bounds;
+	bound3 aboveBounds = bounds;
+			
+	float splitPos = boundEdges[bestAxis][bestOffset].pos;
+	belowBounds.max[bestAxis] = aboveBounds.min[bestAxis] = splitPos;
+
+	uint32_t belowIdx = idx + 1;
+	kdtree_build_recursive(
+		belowIdx, treeSize, treeNextFree, belowBounds, triBounds, 
+		numTrisBelow, trisBelow, depth - 1, 
+		boundEdges, trisBelow, trisAbove + numTris
+	);
+
+	uint32_t aboveIdx = *treeNextFree;
+	kdtree_build_recursive(
+		aboveIdx, treeSize, treeNextFree, aboveBounds, triBounds, 
+		numTrisAbove, trisAbove, depth - 1, 
+		boundEdges, trisBelow, trisAbove + numTris
+	);
+
+	//init node:
+	//---------------
+	m_kdTree[idx].init_interior(bestAxis, aboveIdx, splitPos);
 }
 
 //-------------------------------------------//
@@ -476,7 +856,7 @@ std::shared_ptr<const Mesh> Mesh::gen_unit_sphere(uint32_t numSubdivisions, bool
 		attribs |= VERTEX_ATTRIB_NORMAL;
 
 	return std::make_shared<Mesh>(attribs, (uint32_t)indices.size() / 3, std::move(indicesUnique), 
-	                              std::move(verticesUnique), "", 3, 0, UINT32_MAX, 0);
+								  std::move(verticesUnique), "", 3, 0, UINT32_MAX, 0);
 }
 
 std::shared_ptr<const Mesh> Mesh::gen_unit_cube()
@@ -518,12 +898,12 @@ std::shared_ptr<const Mesh> Mesh::gen_unit_cube()
 
 std::shared_ptr<const Mesh> Mesh::gen_unit_square()
 {
-    float vertices[] = {
-        -0.5f,  0.0f, -0.5f, 0.0f, 0.0f,
-        -0.5f,  0.0f,  0.5f, 0.0f, 1.0f,
-         0.5f,  0.0f,  0.5f, 1.0f, 1.0f,
-         0.5f,  0.0f, -0.5f, 1.0f, 0.0f
-    };
+	float vertices[] = {
+		-0.5f,  0.0f, -0.5f, 0.0f, 0.0f,
+		-0.5f,  0.0f,  0.5f, 0.0f, 1.0f,
+		 0.5f,  0.0f,  0.5f, 1.0f, 1.0f,
+		 0.5f,  0.0f, -0.5f, 1.0f, 0.0f
+	};
 	uint32_t numVertices = sizeof(vertices) / sizeof(float);
 	std::unique_ptr<float[]> verticesUnique = std::unique_ptr<float[]>(new float[numVertices]);
 	memcpy(verticesUnique.get(), vertices, sizeof(vertices));
@@ -540,7 +920,7 @@ std::shared_ptr<const Mesh> Mesh::gen_unit_square()
 }
 
 std::vector<uint32_t> Mesh::icosphere_subdivide(std::vector<float>& vertices, const std::vector<uint32_t>& indices, 
-                                                std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap)
+												std::unordered_map<std::pair<uint32_t, uint32_t>, uint32_t, HashPair>& vertexMap)
 {
 	std::vector<uint32_t> result;
 

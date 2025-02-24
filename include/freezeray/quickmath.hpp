@@ -141,6 +141,7 @@ union vec2
 	vec2(float _val) { x = _val, y = _val; };
 
 	inline float& operator[](size_t i) { return v[i]; };
+	inline const float& operator[](size_t i) const { return v[i]; };
 };
 
 //a 3-dimensional vector of floats
@@ -158,6 +159,7 @@ union vec3
 	vec3(float _val) { x = _val, y = _val, z = _val; };
 
 	inline float& operator[](size_t i) { return v[i]; };
+	inline const float& operator[](size_t i) const { return v[i]; };
 
 	vec2 xy() const { return vec2(x, y); }
 	vec2 xz() const { return vec2(x, z); }
@@ -185,6 +187,7 @@ union vec4
 	vec4(float _val) { x = _val, y = _val, z = _val, w = _val; };
 
 	inline float& operator[](size_t i) { return v[i]; };
+	inline const float& operator[](size_t i) const { return v[i]; };
 
 	vec3 xyz() const { return vec3(x, y, z); }
 	vec3 xyw() const { return vec3(x, y, w); }

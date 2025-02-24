@@ -31,6 +31,15 @@ using namespace qm;
 namespace fr
 {
 
+//HELPER STRUCTS:
+//-------------------------------------------//
+
+struct bound3
+{
+	vec3 min;
+	vec3 max;
+};
+
 //TRIG FUNCTIONS FOR RAYS IN LOCAL SPACE:
 //-------------------------------------------//
 
