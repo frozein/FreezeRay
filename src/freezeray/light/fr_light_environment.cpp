@@ -1,4 +1,6 @@
 #include "freezeray/light/fr_light_environment.hpp"
+
+#define STB_IMAGE_IMPLEMENTATION
 #include "freezeray/fr_globals.hpp"
 #include "freezeray/texture/stb_image.h"
 

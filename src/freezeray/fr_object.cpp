@@ -29,6 +29,12 @@ Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std
 	}
 }
 
+Object::Object(const std::shared_ptr<const Mesh>& mesh, const std::shared_ptr<const Material>& material) :
+	Object(std::vector<std::shared_ptr<const Mesh>>({mesh}), std::vector<std::shared_ptr<const Material>>({material}))
+{
+
+}
+
 Object::Object(const std::vector<ObjectComponent>& components) :
 	m_components(components)
 {

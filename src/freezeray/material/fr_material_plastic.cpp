@@ -14,9 +14,12 @@ namespace fr
 	float roughness = m_roughness->evaluate(hitInfo); \
 	MicrofacetDistributionTrowbridgeReitz distribution(roughness, roughness);
 
-#define MAKE_BRDF_SPECULAR()       \
-	MAKE_MICROFACET_DISTRIBUTION() \
-	BRDFMicrofacet brdfSpecular = BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&m_fresnel));
+#define MAKE_BRDF_SPECULAR()                                                                                \
+	MAKE_MICROFACET_DISTRIBUTION()                                                                          \
+	BRDFMicrofacet brdfSpecular = BRDFMicrofacet(                                                           \
+		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
+		std::shared_ptr<const Fresnel>(&m_fresnel, [](const Fresnel*) {})                                   \
+	);
 
 //-------------------------------------------//
 

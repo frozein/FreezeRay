@@ -1,6 +1,5 @@
 #include "../texture/fr_texture_image.hpp"
 
-#define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 #include "../fr_globals.hpp"
 #include <math.h>

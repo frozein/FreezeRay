@@ -16,11 +16,18 @@ namespace fr
 	float roughnessY = m_roughnessY->evaluate(hitInfo); \
 	MicrofacetDistributionTrowbridgeReitz distribution(roughnessX, roughnessY);
 
-#define MAKE_BRDF() \
-	BRDFMicrofacet brdf = BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&m_fresnel));
+#define MAKE_BRDF()                                                                                         \
+	BRDFMicrofacet brdf = BRDFMicrofacet(                                                                   \
+		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
+		std::shared_ptr<const Fresnel>(&m_fresnel, [](const Fresnel*) {})                                   \
+	);
 
-#define MAKE_BTDF() \
-	BTDFMicrofacet btdf(1.0f, m_etaT, std::shared_ptr<const MicrofacetDistribution>(&distribution), std::shared_ptr<const Fresnel>(&m_fresnel));		
+#define MAKE_BTDF()                                                                                         \
+	BTDFMicrofacet btdf = BTDFMicrofacet(                                                                   \
+		1.0f, m_etaT,                                                                                       \
+		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
+		std::shared_ptr<const Fresnel>(&m_fresnel, [](const Fresnel*) {})                                   \
+	);		
 
 //-------------------------------------------//
 
@@ -48,7 +55,7 @@ vec3 MaterialGlass::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld,
 	else //transmission
 	{
 		MAKE_BTDF();
-		f = m_colorReflection->evaluate(hitInfo) * btdf.f(wi, wo);
+		f = m_colorTransmission->evaluate(hitInfo) * btdf.f(wi, wo);
 	}
 
 	return f;
@@ -87,7 +94,7 @@ vec3 MaterialGlass::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld
 		else
 		{
 			MAKE_BTDF();
-			f = m_colorReflection->evaluate(hitInfo) * btdf.sample_f(wi, wo, u.yz(), pdf);
+			f = m_colorTransmission->evaluate(hitInfo) * btdf.sample_f(wi, wo, u.yz(), pdf);
 		}
     }
 

@@ -1,28 +1,8 @@
 #include <SDL2/SDL.h>
 #include <iostream>
-#include "freezeray/fr_renderer.hpp"
+
+#include "example_scene.hpp"
 #include "freezeray/renderer/fr_renderer_path.hpp"
-#include "freezeray/material/fr_material_single_bxdf.hpp"
-#include "freezeray/material/fr_material_specular_glass.hpp"
-#include "freezeray/material/fr_material_metal.hpp"
-#include "freezeray/material/fr_material_mirror.hpp"
-#include "freezeray/material/fr_material_plastic.hpp"
-#include "freezeray/bxdf/fr_brdf_lambertian_diffuse.hpp"
-#include "freezeray/bxdf/fr_brdf_microfacet.hpp"
-#include "freezeray/bxdf/fr_brdf_specular.hpp"
-#include "freezeray/bxdf/fr_btdf_specular.hpp"
-#include "freezeray/bxdf/fr_btdf_microfacet.hpp"
-#include "freezeray/fresnel/fr_fresnel_dielectric.hpp"
-#include "freezeray/fresnel/fr_fresnel_conductor.hpp"
-#include "freezeray/fresnel/fr_fresnel_constant.hpp"
-#include "freezeray/microfacet_distribution/fr_microfacet_distribution_beckmann.hpp"
-#include "freezeray/microfacet_distribution/fr_microfacet_distribution_trowbridge_reitz.hpp"
-#include "freezeray/light/fr_light_directional.hpp"
-#include "freezeray/light/fr_light_point.hpp"
-#include "freezeray/light/fr_light_area.hpp"
-#include "freezeray/light/fr_light_environment.hpp"
-#include "freezeray/texture/fr_texture_constant.hpp"
-#include "freezeray/texture/fr_texture_image.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -61,57 +41,18 @@ int main(int argc, char** argv)
 	memset(windowSurface->pixels, 0, windowSurface->h * windowSurface->pitch);
 	SDL_UnlockSurface(windowSurface);
 
-	//create scene:
+	//load scene:
 	//---------------
-	std::shared_ptr<const fr::Mesh> mesh1 = fr::Mesh::from_unit_square();
-	std::shared_ptr<const fr::Mesh> mesh2 = fr::Mesh::from_unit_sphere(2, true);
-
-	std::shared_ptr<fr::Texture<vec3>> tex1 = std::make_shared<fr::TextureConstant<vec3>>(vec3(1.0f));
-	std::shared_ptr<fr::Texture<float>> tex2 = std::make_shared<fr::TextureConstant<float>>(0.25f);
-
-	std::shared_ptr<const fr::Material> material1 = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertianDiffuse>(), tex1);
-	std::shared_ptr<const fr::Material> material2 = std::make_shared<fr::MaterialMetal>("", fr::MetalType::GOLD, tex2, tex2);
-	//std::shared_ptr<const fr::Material> material2 = std::make_shared<fr::MaterialMirror>("", tex1);
-
-	std::vector<std::shared_ptr<const fr::Mesh>> meshList1 = {mesh1};
-	std::vector<std::shared_ptr<const fr::Material>> materialList1 = {material1};
-	std::shared_ptr<const fr::Object> object1 = std::make_shared<fr::Object>(meshList1, materialList1);
-	mat4 objectTransform1 = translate(vec3(0.0f, -1.0f, 0.0f)) * scale(vec3(10.0f, 1.0f, 10.0f));
-
-	std::vector<std::shared_ptr<const fr::Mesh>> meshList2 = {mesh2};
-	std::vector<std::shared_ptr<const fr::Material>> materialList2 = {material2};
-	std::shared_ptr<const fr::Object> object2 = std::make_shared<fr::Object>(meshList2, materialList2);
-	mat4 objectTransform2 = mat4_identity();
-
-	std::vector<fr::ObjectReference> objectList = {{object1, objectTransform1}, {object2, objectTransform2}};
-
-	//std::shared_ptr<const fr::LightDirectional> light1 = std::make_shared<fr::LightDirectional>(normalize(vec3(1.0f)), vec3(2.0f));
-	//std::shared_ptr<const fr::LightPoint> light2 = std::make_shared<fr::LightPoint>(vec3(-2.0f, 0.0f, 0.0f), vec3(0.3f, 0.3f, 1.5f));
-	std::shared_ptr<const fr::LightEnvironment> light3 = std::make_shared<fr::LightEnvironment>("assets/test_skybox.hdr");
-
-	//std::shared_ptr<const fr::Mesh> lightMesh1 = fr::Mesh::unit_square();
-	//mat4 lightTransform1 = translate(vec3(0.0f, 1.5f, 0.0f)) * scale(vec3(2.5f, 1.0f, 2.5f));
-	//std::shared_ptr<const fr::LightArea> light1 = std::make_shared<fr::LightArea>(lightMesh1, lightTransform1, vec3(1.0f));
-
-	std::vector<std::shared_ptr<const fr::Light>> lightList = {light3};
-
-	std::shared_ptr<const fr::Scene> scene = std::make_shared<fr::Scene>(objectList, lightList);
+	ExampleScene scene = example_material_demo("assets/test_skybox.hdr");
 
 	//create renderer:
 	//---------------
-	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(0.0f, 0.0f, 3.0f), 
-		normalize(vec3(0.0f, 0.0f, -1.0f)), 
-		vec3(0.0f, 1.0f, 0.0f), 
-		60.0f, 
-		(float)WINDOW_W / (float)WINDOW_H
-	);
 	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
-		camera, 
+		scene.camera, 
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		100,
+		10,
 		true,
 		true
 	);
@@ -147,7 +88,7 @@ int main(int argc, char** argv)
 
 	SDL_LockSurface(windowSurface);
 	
-	renderer->render(scene, writePixel, display, 3);
+	renderer->render(scene.scene, writePixel, display, 3);
 
 	SDL_UnlockSurface(windowSurface);
 

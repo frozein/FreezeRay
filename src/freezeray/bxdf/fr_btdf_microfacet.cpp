@@ -18,7 +18,7 @@ vec3 BTDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 	//---------------
     if(same_hemisphere(wo, wi))
 	{
-		std::cout << "failed 1\n";
+		//std::cout << "failed 1\n";
 		return vec3(0.0f);
 	}
 
@@ -55,7 +55,7 @@ vec3 BTDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 	//---------------
     if(dot(wo, wh) * dot(wi, wh) > 0.0f) 
 	{
-		std::cout << "failed 2\n";
+		//std::cout << "failed 2\n";
 		return vec3(0.0f);
 	}
 

@@ -16,13 +16,14 @@ struct ExampleScene
 	uint32_t windowWidth;
 	uint32_t windowHeight;
 
-	std::shared_ptr<fr::Scene> scene;
-	std::shared_ptr<fr::Camera> camera;
+	std::shared_ptr<const fr::Scene> scene;
+	std::shared_ptr<const fr::Camera> camera;
 };
 
 //-------------------------------------------//
 
-ExampleScene example_cornell_box();
+//spheres with different materials lit by an environment map
+ExampleScene example_material_demo(const std::string& envMap);
 
 //for scratch work
 ExampleScene scratch();
