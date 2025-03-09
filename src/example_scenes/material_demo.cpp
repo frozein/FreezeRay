@@ -1,6 +1,10 @@
 #include "example_scene.hpp"
 
-#include "freezeray/bxdf/fr_brdf_lambertian_diffuse.hpp"
+#include "freezeray/bxdf/fr_brdf_lambertian.hpp"
+#include "freezeray/bxdf/fr_btdf_microfacet.hpp"
+#include "freezeray/bxdf/fr_btdf_lambertian.hpp"
+#include "freezeray/microfacet_distribution/fr_microfacet_distribution_trowbridge_reitz.hpp"
+#include "freezeray/microfacet_distribution/fr_microfacet_distribution_beckmann.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
 #include "freezeray/material/fr_material_single_bxdf.hpp"
 #include "freezeray/material/fr_material_metal.hpp"
@@ -28,12 +32,12 @@ ExampleScene example_material_demo(const std::string& envMap)
 	std::shared_ptr<fr::Texture<vec3>> redColorTex = std::make_shared<fr::TextureConstant<vec3>>(vec3(1.0f, 0.0f, 0.0f));
 	std::shared_ptr<fr::Texture<vec3>> yellowColorTex = std::make_shared<fr::TextureConstant<vec3>>(vec3(1.0f, 1.0f, 0.0f));
 	std::shared_ptr<fr::Texture<float>> goldSphereRoughnessTex = std::make_shared<fr::TextureConstant<float>>(0.25f);
-	std::shared_ptr<fr::Texture<float>> glassSphereRoughnessTex = std::make_shared<fr::TextureConstant<float>>(0.1f);
+	std::shared_ptr<fr::Texture<float>> glassSphereRoughnessTex = std::make_shared<fr::TextureConstant<float>>(0.25f);
 	std::shared_ptr<fr::Texture<float>> plasticSphereRoughnessTex = std::make_shared<fr::TextureConstant<float>>(0.5f);
 
-	std::shared_ptr<const fr::Material> planeMat = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertianDiffuse>(), whiteColorTex);
+	std::shared_ptr<const fr::Material> planeMat = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertian>(), whiteColorTex);
 	std::shared_ptr<const fr::Material> goldMat = std::make_shared<fr::MaterialMetal>("", fr::MetalType::GOLD, goldSphereRoughnessTex, goldSphereRoughnessTex);
-	std::shared_ptr<const fr::Material> glassMat = std::make_shared<fr::MaterialSpecularGlass>("", 1.6f, whiteColorTex, whiteColorTex);
+	std::shared_ptr<const fr::Material> glassMat = std::make_shared<fr::MaterialGlass>("", 1.6f, whiteColorTex, whiteColorTex, glassSphereRoughnessTex, glassSphereRoughnessTex);
 	std::shared_ptr<const fr::Material> mirrorMat = std::make_shared<fr::MaterialMirror>("", whiteColorTex);
 	std::shared_ptr<const fr::Material> plasticMat = std::make_shared<fr::MaterialPlastic>("", redColorTex, yellowColorTex, plasticSphereRoughnessTex);
 

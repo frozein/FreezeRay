@@ -68,4 +68,12 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, Inte
 	return hit;
 }
 
+std::shared_ptr<const Object> Object::from_obj(const std::string& objPath, const std::string& mtlPath)
+{
+	std::vector<std::shared_ptr<const Mesh>> meshes = Mesh::from_obj(objPath);
+	std::vector<std::shared_ptr<const Material>> materials = Material::from_mtl(mtlPath);
+
+	return std::make_shared<Object>(meshes, materials);
+}
+
 }; //namespace fr

@@ -1,10 +1,10 @@
-/* fr_brdf_lambertian_diffuse.hpp
+/* fr_brdf_lambertian.hpp
  *
- * contains a definition for a lambertian diffuse BRDF model
+ * contains a definition for a lambertian BRDF model
  */
 
-#ifndef FR_BRDF_LAMBERTIAN_DIFFUSE
-#define FR_BRDF_LAMBERTIAN_DIFFUSE
+#ifndef FR_BRDF_LAMBERTIAN
+#define FR_BRDF_LAMBERTIAN
 
 #include "../fr_bxdf.hpp"
 
@@ -13,10 +13,10 @@
 namespace fr
 {
 
-class BRDFLambertianDiffuse : public BXDF
+class BRDFLambertian : public BXDF
 {
 public:
-	BRDFLambertianDiffuse();
+	BRDFLambertian();
 
 	vec3 f(const vec3& wi, const vec3& wo) const override;
 	vec3 sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdf) const override;
@@ -25,4 +25,4 @@ public:
 
 }; //namespace fr
 
-#endif //#ifndef FR_BRDF_LAMBERTIAN_DIFFUSE
+#endif //#ifndef FR_BRDF_LAMBERTIAN

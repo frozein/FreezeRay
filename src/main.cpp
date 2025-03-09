@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		10,
+		100,
 		true,
 		true
 	);

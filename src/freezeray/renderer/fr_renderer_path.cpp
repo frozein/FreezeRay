@@ -117,15 +117,7 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 
 		//set new ray
 		vec3 bounceDir = wi;
-		vec3 bouncePos = hitInfo.worldPos;
-		
-		if(dot(bounceDir, hitInfo.worldNormal) > 0.0f) //reflection
-			bouncePos = bouncePos + FR_EPSILON * hitInfo.worldNormal;
-		else //transmission
-		{
-			bool entering = dot(wo, hitInfo.worldNormal) > 0.0f;
-			bouncePos = bouncePos + (entering ? -FR_EPSILON : FR_EPSILON) * hitInfo.worldNormal;
-		}
+		vec3 bouncePos = hitInfo.worldPos + FR_EPSILON * normalize(wi);
 
 		curRay = Ray(bouncePos, bounceDir);
 		deltaBounce = hitInfo.material->bsdf_is_delta();

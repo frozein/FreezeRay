@@ -8,7 +8,7 @@
 
 #include "../fr_material.hpp"
 #include "../fr_texture.hpp"
-#include "../bxdf/fr_brdf_lambertian_diffuse.hpp"
+#include "../bxdf/fr_brdf_lambertian.hpp"
 #include "../fresnel/fr_fresnel_dielectric.hpp"
 
 //-------------------------------------------//
@@ -32,7 +32,7 @@ private:
 	std::shared_ptr<const Texture<float>> m_roughness;
 
 	FresnelDielectric m_fresnel;
-	BRDFLambertianDiffuse m_brdfDiffuse;
+	BRDFLambertian m_brdfDiffuse;
 };
 
 }; //namespace fr

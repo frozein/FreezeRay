@@ -339,20 +339,15 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const
 {
 	vec3 rayPos = initialHitInfo.worldPos;
-	if(dot(wo, initialHitInfo.worldNormal) > 0.0f)
-		rayPos = rayPos + initialHitInfo.worldNormal * FR_EPSILON;
-	else
-		rayPos = rayPos - initialHitInfo.worldNormal * FR_EPSILON;
+	rayPos = rayPos + FR_EPSILON * normalize(wi);
 
-	Ray ray;
+	vec3 rayDir;
 	if(visInfo.infinite)
-		ray = Ray(rayPos, wi);
+		rayDir = wi;
 	else
-	{
-		vec3 toEnd = visInfo.endPos - rayPos;
-		ray = Ray(rayPos, toEnd);
-	}
+		rayDir = visInfo.endPos - initialHitInfo.worldPos;
 
+	Ray ray(rayPos, rayDir);
 	IntersectionInfo hitInfo;
 	bool hit = scene->intersect(ray, hitInfo);
 

@@ -10,6 +10,7 @@
 
 #include <string>
 #include <memory>
+#include <vector>
 
 #include "fr_bxdf.hpp"
 #include "fr_raycast_info.hpp"
@@ -33,6 +34,8 @@ public:
 
 	bool bsdf_is_delta() const;
 	BXDFType bsdf_type() const;
+
+	static std::vector<std::shared_ptr<const Material>> from_mtl(const std::string& path);
 
 private:
 	std::string m_name;

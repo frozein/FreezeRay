@@ -1,5 +1,7 @@
 #include "freezeray/fr_material.hpp"
+
 #include "freezeray/fr_globals.hpp"
+#include "freezeray/quickobj.h"
 
 //-------------------------------------------//
 
@@ -30,6 +32,11 @@ bool Material::bsdf_is_delta() const
 BXDFType Material::bsdf_type() const
 {
 	return m_type;
+}
+
+std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::string& path)
+{
+	return {};
 }
 
 //-------------------------------------------//
