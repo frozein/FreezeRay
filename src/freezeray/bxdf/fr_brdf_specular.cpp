@@ -7,7 +7,7 @@ namespace fr
 {
 
 BRDFSpecular::BRDFSpecular(std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(true, BXDFType::REFLECTION), m_fresnel(fresnel)
+	BXDF(BXDFflags::REFLECTION | BXDFflags::DELTA), m_fresnel(fresnel)
 {
 
 }

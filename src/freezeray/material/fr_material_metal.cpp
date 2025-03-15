@@ -12,24 +12,6 @@ namespace fr
 
 #define ETA_I vec3(1.0f) //refractive index of air
 
-#define MAKE_FRESNEL()                                  \
-	vec3 etaT = m_etaT->evaluate(hitInfo);             \
-	vec3 absorption = m_absorption->evaluate(hitInfo); \
-	FresnelConductor fresnel(ETA_I, etaT, absorption);
-
-#define MAKE_MICROFACET_DISTRIBUTION()                  \
-	float roughnessX = m_roughnessX->evaluate(hitInfo); \
-	float roughnessY = m_roughnessY->evaluate(hitInfo); \
-	MicrofacetDistributionTrowbridgeReitz distribution(roughnessX, roughnessY);
-
-#define MAKE_BRDF()                                                                                         \
-	MAKE_FRESNEL()                                                                                          \
-	MAKE_MICROFACET_DISTRIBUTION()                                                                          \
-	BRDFMicrofacet brdf = BRDFMicrofacet(                                                                   \
-		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
-		std::shared_ptr<const Fresnel>(&fresnel, [](const Fresnel*) {})                                     \
-	);
-
 //-------------------------------------------//
 
 struct MetalParams
@@ -55,46 +37,42 @@ const std::unordered_map<MetalType, const MetalParams> PARAMS = {
 
 MaterialMetal::MaterialMetal(const std::string& name, const std::shared_ptr<Texture<vec3>>& eta, const std::shared_ptr<Texture<vec3>>& k, 
                              const std::shared_ptr<Texture<float>>& roughnessU, const std::shared_ptr<Texture<float>>& roughnessV) :
-	Material(name, false, BXDFType::REFLECTION), m_etaT(eta), m_absorption(k), m_roughnessX(roughnessU), m_roughnessY(roughnessV)
+	Material(name), m_etaT(eta), m_absorption(k), m_roughnessX(roughnessU), m_roughnessY(roughnessV)
 {
 
 }
 
 MaterialMetal::MaterialMetal(const std::string& name, const MetalType& type, const std::shared_ptr<Texture<float>>& roughnessU, const std::shared_ptr<Texture<float>>& roughnessV) :
-	Material(name, false, BXDFType::REFLECTION), m_etaT(std::make_shared<TextureConstant<vec3>>(PARAMS.at(type).eta)),
+	Material(name), m_etaT(std::make_shared<TextureConstant<vec3>>(PARAMS.at(type).eta)),
 	m_absorption(std::make_shared<TextureConstant<vec3>>(PARAMS.at(type).absorption)), m_roughnessX(roughnessU), m_roughnessY(roughnessV)
 {
 
 }
 
-vec3 MaterialMetal::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+std::shared_ptr<BSDF> MaterialMetal::get_bsdf(const IntersectionInfo& hitInfo) const
 {
-	vec3 wi, wo;
-	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
+	//create distribution + fresnel:
+	//---------------
+	float roughnessX = m_roughnessX->evaluate(hitInfo);
+	float roughnessY = m_roughnessY->evaluate(hitInfo);
+	std::shared_ptr<MicrofacetDistribution> distribution =
+		std::make_shared<MicrofacetDistributionTrowbridgeReitz>(roughnessX, roughnessY);
 
-	MAKE_BRDF();
-	return brdf.f(wi, wo);
-}
+	vec3 etaT = m_etaT->evaluate(hitInfo);
+	vec3 absorption = m_absorption->evaluate(hitInfo);
+	std::shared_ptr<Fresnel> fresnel = 
+		std::make_shared<FresnelConductor>(ETA_I, etaT, absorption);
 
-vec3 MaterialMetal::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
-{
-	vec3 wi;
-	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+	//create bsdf:
+	//---------------
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
 
-	MAKE_BRDF();
-	vec3 f = brdf.sample_f(wi, wo, u.xy(), pdf);
+	bsdf->add_bxdf(
+		std::make_shared<BRDFMicrofacet>(distribution, fresnel),
+		vec3(1.0f)
+	);
 
-	wiWorld = local_to_world(hitInfo.worldNormal, wi);
-	return f;
-}
-
-float MaterialMetal::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
-{
-	vec3 wi, wo;
-	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
-
-	MAKE_BRDF();
-	return brdf.pdf(wi, wo);
+	return bsdf;
 }
 
 }; //namespace fr

@@ -7,17 +7,14 @@ namespace fr
 {
 
 BRDFLambertian::BRDFLambertian() :
-	BXDF(false, BXDFType::REFLECTION)
+	BXDF(BXDFflags::REFLECTION)
 {
 
 }
 
 vec3 BRDFLambertian::f(const vec3& wi, const vec3& wo) const
 {
-	if(!same_hemisphere(wi, wo))
-		return 0.0f;
-
-	return FR_INV_PI;
+	return same_hemisphere(wi, wo) ? FR_INV_PI : 0.0f;
 }
 
 vec3 BRDFLambertian::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const

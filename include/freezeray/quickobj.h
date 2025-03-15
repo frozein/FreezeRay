@@ -104,10 +104,11 @@ typedef struct QOBJmaterial
 	QOBJcolor ambientColor;
 	QOBJcolor diffuseColor;
 	QOBJcolor specularColor;
+	QOBJcolor transmittanceColor;
 	char* ambientMapPath;  //== NULL if one does not exist
 	char* diffuseMapPath;  //== NULL if one does not exist
 	char* specularMapPath; //== NULL if one does not exist
-	char* normalMapPath;   //== NULL if one does not exist
+	char* bumpMapPath;     //== NULL if one does not exist
 
 	float opacity;
 	float specularExp;
@@ -466,8 +467,8 @@ void qobj_material_free(QOBJmaterial material)
 		QOBJ_FREE(material.diffuseMapPath);
 	if(material.specularMapPath)
 		QOBJ_FREE(material.specularMapPath);
-	if(material.normalMapPath)
-		QOBJ_FREE(material.normalMapPath);
+	if(material.bumpMapPath)
+		QOBJ_FREE(material.bumpMapPath);
 }
 
 //----------------------------------------------------------------------//
@@ -970,6 +971,13 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 
 			(*materials)[curMaterial].specularColor = col;
 		}
+		else if(strcmp(curToken, "Kt") == 0 || strcmp(curToken, "Tf") == 0)
+		{
+			QOBJcolor col;
+			fscanf_s(fptr, "%f %f %f\n", &col.r, &col.g, &col.b);
+
+			(*materials)[curMaterial].transmittanceColor = col;
+		}
 		else if(strcmp(curToken, "d") == 0)
 		{
 			float opacity;
@@ -1017,7 +1025,7 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 			char* mapPath = (char*)QOBJ_MALLOC(QOBJ_MAX_TOKEN_LEN * sizeof(char));
 			qobj_fgets(fptr, mapPath, &curTokenEnd);
 
-			(*materials)[curMaterial].normalMapPath = mapPath;
+			(*materials)[curMaterial].bumpMapPath = mapPath;
 		}
 	}
 

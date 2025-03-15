@@ -228,7 +228,7 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const
 
 	//compute bsdf f:
 	//---------------
-	vec3 f = hitInfo.material->bsdf_f(hitInfo, wi, wo) * std::abs(dot(wi, hitInfo.worldNormal));
+	vec3 f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.worldNormal));
 
 	//trace visibility ray, return:
 	//---------------
@@ -267,8 +267,8 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	vec3 uLight = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 	li = light->sample_li(hitInfo, uLight, wi, visInfo, pdfLight);
 
-	f = hitInfo.material->bsdf_f(hitInfo, wi, wo) * std::abs(dot(wi, hitInfo.worldNormal));
-	pdfScattering = hitInfo.material->bsdf_pdf(hitInfo, wi, wo);
+	f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.worldNormal));
+	pdfScattering = hitInfo.bsdf->pdf(wi, wo, ~BXDFflags::DELTA);
 
 	if(!trace_visibility_ray(scene, hitInfo, wi, wo, visInfo))
 		li = vec3(0.0f);
@@ -289,8 +289,10 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	if(!light->is_delta())
 	{
 		//sample from bsdf
+		BXDFflags sampledFlags;
+
 		vec3 uBsdf = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
-		f = hitInfo.material->bsdf_sample_f(hitInfo, wi, wo, uBsdf, pdfScattering);
+		f = hitInfo.bsdf->sample_f(wi, wo, uBsdf, pdfScattering, ~BXDFflags::DELTA, sampledFlags);
 		f = f * std::abs(dot(wi, hitInfo.worldNormal));
 
 		//get light pdf

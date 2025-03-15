@@ -7,7 +7,7 @@ namespace fr
 {
 
 BTDFSpecular::BTDFSpecular(float etaI, float etaT, std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(true, BXDFType::TRANSMISSION), m_etaI(etaI), m_etaT(etaT), m_fresnel(fresnel)
+	BXDF(BXDFflags::TRANSMISSION | BXDFflags::DELTA), m_etaI(etaI), m_etaT(etaT), m_fresnel(fresnel)
 {
 
 }

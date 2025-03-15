@@ -36,9 +36,7 @@ public:
 	MaterialMetal(const std::string& name, const MetalType& type, 
 	              const std::shared_ptr<Texture<float>>& roughnessU, const std::shared_ptr<Texture<float>>& roughnessV);
 
-	vec3 bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
-	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const override;
-	float bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override;
+	std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const;
 
 private:
 	std::shared_ptr<const Texture<vec3>> m_etaT;

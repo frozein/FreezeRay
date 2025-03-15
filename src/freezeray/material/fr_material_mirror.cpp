@@ -6,33 +6,28 @@ namespace fr
 {
 
 MaterialMirror::MaterialMirror(const std::string& name, const std::shared_ptr<Texture<vec3>>& color) : 
-	Material(name, true, BXDFType::REFLECTION), m_color(color), m_fresnel(vec3(1.0f)), 
-	m_brdf(std::make_shared<FresnelConstant>(m_fresnel))
+	Material(name), m_color(color) 
 {
 
 }
 
-vec3 MaterialMirror::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+std::shared_ptr<BSDF> MaterialMirror::get_bsdf(const IntersectionInfo& hitInfo) const
 {
-	//delta distribution
-	return vec3(0.0f);
-}
+	//create fresnel:
+	//---------------
+	std::shared_ptr<Fresnel> fresnel =
+		std::make_shared<FresnelConstant>(1.0f);
 
-vec3 MaterialMirror::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
-{
-	vec3 wi;
-	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+	//create BSDF:
+	//---------------
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
 
-	vec3 f = m_color->evaluate(hitInfo) * m_brdf.sample_f(wi, wo, u.xy(), pdf);
+	bsdf->add_bxdf(
+		std::make_shared<BRDFSpecular>(fresnel), 
+		m_color->evaluate(hitInfo)
+	);
 
-	wiWorld = local_to_world(hitInfo.worldNormal, wi);
-	return f;
-}
-
-float MaterialMirror::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
-{
-	//delta distribution
-	return 1.0f;
+	return bsdf;
 }
 
 }; //namespace fr

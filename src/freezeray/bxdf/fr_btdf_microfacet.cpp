@@ -7,7 +7,7 @@ namespace fr
 {
 
 BTDFMicrofacet::BTDFMicrofacet(float etaI, float etaT, std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(false, BXDFType::TRANSMISSION), m_etaI(etaI), m_etaT(etaT), m_distribution(distribution), m_fresnel(fresnel)
+	BXDF(BXDFflags::TRANSMISSION), m_etaI(etaI), m_etaT(etaT), m_distribution(distribution), m_fresnel(fresnel)
 {
 
 }

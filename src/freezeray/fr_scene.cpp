@@ -9,26 +9,14 @@ namespace fr
 class MaterialNoScattering : public Material
 {
 public:
-	MaterialNoScattering() : Material("no scattering", true, BXDFType::REFLECTION) 
+	MaterialNoScattering() : Material("no scattering")
 	{
 
 	}
 
-	vec3 bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override 
-	{ 
-		return vec3(0.0f); 
-	}
-
-	vec3 bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const override 
+	std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const
 	{
-		wiWorld = hitInfo.worldNormal;
-		pdf = 0.0f;
-		return vec3(0.0f);
-	}
-
-	float bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const override
-	{
-		return 0.0f;
+		return std::make_shared<BSDF>(hitInfo.worldNormal);
 	}
 };
 
@@ -111,17 +99,19 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 
 	if(hit)
 	{
-		hitInfo.material = minMaterial;
+		hitInfo.bsdf = nullptr;
 		hitInfo.light = minLight;
 		hitInfo.worldPos = minWorldHitPos;
 		hitInfo.objectPos = minObjectHitPos;
 		hitInfo.worldNormal = normalize(minWorldNormal);
 		hitInfo.objectNormal = normalize(minObjectNormal);
 		hitInfo.uv = minUV;
+
+		hitInfo.bsdf = minMaterial->get_bsdf(hitInfo);
 	}
 	else
 	{
-		hitInfo.material = nullptr;
+		hitInfo.bsdf = nullptr;
 		hitInfo.light = nullptr;
 		hitInfo.worldPos = vec3(0.0f);
 		hitInfo.objectPos = vec3(0.0f);

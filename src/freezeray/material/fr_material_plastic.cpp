@@ -10,74 +10,41 @@ namespace fr
 #define ETA_I 1.0f //refractive index of air
 #define ETA_T 1.5f //refractive index of glass
 
-#define MAKE_MICROFACET_DISTRIBUTION()                \
-	float roughness = m_roughness->evaluate(hitInfo); \
-	MicrofacetDistributionTrowbridgeReitz distribution(roughness, roughness);
-
-#define MAKE_BRDF_SPECULAR()                                                                                \
-	MAKE_MICROFACET_DISTRIBUTION()                                                                          \
-	BRDFMicrofacet brdfSpecular = BRDFMicrofacet(                                                           \
-		std::shared_ptr<const MicrofacetDistribution>(&distribution, [](const MicrofacetDistribution*) {}), \
-		std::shared_ptr<const Fresnel>(&m_fresnel, [](const Fresnel*) {})                                   \
-	);
-
 //-------------------------------------------//
 
 MaterialPlastic::MaterialPlastic(const std::string& name, const std::shared_ptr<Texture<vec3>>& colorDiffuse, const std::shared_ptr<Texture<vec3>>& colorSpecular, 
 	                             const std::shared_ptr<Texture<float>>& roughness) :
-	Material(name, false, BXDFType::REFLECTION), m_colorDiffuse(colorDiffuse), m_colorSpecular(colorSpecular), m_roughness(roughness), 
-	m_brdfDiffuse(), m_fresnel(ETA_I, ETA_T)
+	Material(name), m_colorDiffuse(colorDiffuse), m_colorSpecular(colorSpecular), m_roughness(roughness)
 {
 
 }
 
-vec3 MaterialPlastic::bsdf_f(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
+std::shared_ptr<BSDF> MaterialPlastic::get_bsdf(const IntersectionInfo& hitInfo) const
 {
-	vec3 wi, wo;
-	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
+	//create distribution + fresnel:
+	//---------------
+	float roughness = m_roughness->evaluate(hitInfo);
+	std::shared_ptr<MicrofacetDistribution> distribution = 
+		std::make_shared<MicrofacetDistributionTrowbridgeReitz>(roughness, roughness);
 
-	MAKE_BRDF_SPECULAR();
+	std::shared_ptr<Fresnel> fresnel =
+		std::make_shared<FresnelDielectric>(ETA_I, ETA_T);
 
-	vec3 f;
-	f = f + m_colorDiffuse->evaluate(hitInfo) * m_brdfDiffuse.f(wi, wo);
-	f = f + m_colorSpecular->evaluate(hitInfo) * brdfSpecular.f(wi, wo);
+	//create bsdf:
+	//---------------
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
 
-	return f;
-}
+	bsdf->add_bxdf(
+		std::make_shared<BRDFLambertian>(),
+		m_colorDiffuse->evaluate(hitInfo)
+	);
 
-vec3 MaterialPlastic::bsdf_sample_f(const IntersectionInfo& hitInfo, vec3& wiWorld, const vec3& woWorld, const vec3& u, float& pdf) const
-{
-	vec3 wi;
-	vec3 wo = world_to_local(hitInfo.worldNormal, woWorld);
+	bsdf->add_bxdf(
+		std::make_shared<BRDFMicrofacet>(distribution, fresnel),
+		m_colorSpecular->evaluate(hitInfo)
+	);
 
-	vec3 f = vec3(0.0f);
-
-	if(u.x < 0.5f)
-		f = m_colorDiffuse->evaluate(hitInfo) * m_brdfDiffuse.sample_f(wi, wo, u.yz(), pdf);
-	else
-	{
-		MAKE_BRDF_SPECULAR();
-		f = m_colorSpecular->evaluate(hitInfo) * brdfSpecular.sample_f(wi, wo, u.yz(), pdf);
-	}
-
-	pdf /= 2.0f;
-
-	wiWorld = local_to_world(hitInfo.worldNormal, wi);
-	return f;
-}
-
-float MaterialPlastic::bsdf_pdf(const IntersectionInfo& hitInfo, const vec3& wiWorld, const vec3& woWorld) const
-{
-	vec3 wi, wo;
-	world_to_local(hitInfo.worldNormal, wiWorld, woWorld, wi, wo);
-
-	MAKE_BRDF_SPECULAR();
-
-	float pdf = 0.0f;
-	pdf += m_brdfDiffuse.pdf(wi, wo);
-	pdf += brdfSpecular.pdf(wi, wo);
-
-	return pdf / 2.0f;
+	return bsdf;
 }
 
 }; //namespace fr

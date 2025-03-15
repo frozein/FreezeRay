@@ -15,12 +15,12 @@ using namespace qm;
 namespace fr
 {
 
-class Material;
+class BSDF;
 class Light;
 
 struct IntersectionInfo
 {
-	std::shared_ptr<const Material> material;
+	std::shared_ptr<const BSDF> bsdf;
 	std::shared_ptr<const Light> light;
 
 	vec3 worldPos;

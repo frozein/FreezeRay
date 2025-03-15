@@ -66,8 +66,11 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		if(!hit)
 			break;
 
+		//get bsdf flags
+		BXDFflags bsdfFlags = hitInfo.bsdf->get_flags();
+		
 		//add contribution from light sources
-		if(!hitInfo.material->bsdf_is_delta())
+		if((bsdfFlags & BXDFflags::DELTA) == BXDFflags::NONE)
 		{
 			if(m_mis)
 				light = light + mult * sample_one_light_mis(scene, hitInfo, wo);
@@ -79,36 +82,45 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		vec3 f;
 		float pdf;
 		vec3 wi;
+		BXDFflags sampledFlags;
 
-		if(hitInfo.material->bsdf_is_delta() || m_importanceSampling)
+		if((bsdfFlags & BXDFflags::DELTA) != BXDFflags::NONE || m_importanceSampling)
 		{
 			vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
-			f = hitInfo.material->bsdf_sample_f(hitInfo, wi, wo, u, pdf);
+			f = hitInfo.bsdf->sample_f(wi, wo, u, pdf, BXDFflags::ALL, sampledFlags);
 		}
 		else
 		{
-			switch(hitInfo.material->bsdf_type())
+			if(((bsdfFlags & BXDFflags::REFLECTION)   != BXDFflags::NONE) &&
+			   ((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE))
 			{
-			case BXDFType::REFLECTION:
+				wi = random_dir_sphere();
+				pdf = FR_INV_PI;
+			}
+			else if((bsdfFlags & BXDFflags::REFLECTION) != BXDFflags::NONE)
+			{
 				wi = random_dir_hemisphere(hitInfo.worldNormal);
 				pdf = FR_INV_2_PI;
-				break;
-			case BXDFType::TRANSMISSION:
+			}
+			else if((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE)
+			{
 				wi = random_dir_hemisphere(-1.0f * hitInfo.worldNormal);
 				pdf = FR_INV_2_PI;
-				break;
-			case BXDFType::BOTH:
-			default:
-				wi = random_dir_sphere();
-				pdf = 2.0f * FR_INV_2_PI;
-				break;
+			}
+			else
+			{
+				//shouldnt ever reach
+				
+				wi = 0.0f;
+				pdf = 0.0f;
 			}
 
-			f = hitInfo.material->bsdf_f(hitInfo, wi, wo);
+			f = hitInfo.bsdf->f(wi, wo, BXDFflags::ALL);
+			sampledFlags = bsdfFlags;
 		}
 
 		//break if 0 BRDF or PDF
-		if(f == vec3(0.0f) || pdf == 0.0f)
+		if(f == 0.0f || pdf == 0.0f)
 			break;
 
 		//apply brdf to current color
@@ -120,7 +132,7 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		vec3 bouncePos = hitInfo.worldPos + FR_EPSILON * normalize(wi);
 
 		curRay = Ray(bouncePos, bounceDir);
-		deltaBounce = hitInfo.material->bsdf_is_delta();
+		deltaBounce = (sampledFlags & BXDFflags::DELTA) != BXDFflags::NONE;
 
 		//russian roulette to exit based on color:
 		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);

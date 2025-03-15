@@ -7,13 +7,16 @@ namespace fr
 {
 
 BRDFMicrofacet::BRDFMicrofacet(std::shared_ptr<const MicrofacetDistribution> distribution, std::shared_ptr<const Fresnel> fresnel) :
-	BXDF(false, BXDFType::REFLECTION), m_distribution(distribution), m_fresnel(fresnel)
+	BXDF(BXDFflags::REFLECTION), m_distribution(distribution), m_fresnel(fresnel)
 {
 
 }
 
 vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 {
+	if(!same_hemisphere(wi, wo))
+		return 0.0f;
+
     float cosThetaO = std::abs(cos_theta(wo));
 	float cosThetaI = std::abs(cos_theta(wi));
     vec3 wh = wi + wo;
