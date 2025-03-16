@@ -306,7 +306,7 @@ bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, Inters
 
 		//ensure that shaded normal is in "same hemisphere" as geom normal to avoid shading errors
 		vec3 shadingNormal = normal0 * b2 + normal1 * minB0 + normal2 * minB1;
-		if(dot(rayDir, geomNormal) * dot(rayDir, shadingNormal) < 0.0f)
+		if(dot(rayDir, geomNormal) * dot(rayDir, shadingNormal) <= 0.0f)
 			normal = geomNormal;
 		else
 			normal = shadingNormal;

@@ -31,9 +31,50 @@ MaterialUber::MaterialUber(const std::string& name, std::shared_ptr<const Textur
 
 std::shared_ptr<BSDF> MaterialUber::get_bsdf(const IntersectionInfo& hitInfo) const
 {
-	//TODO
+	//sample textures:
+	//---------------
+	vec3 opacity = m_opacity->evaluate(hitInfo);
+	float eta = m_eta->evaluate(hitInfo);
 
-	return nullptr;
+	vec3 colorDiffuse       =         opacity  * m_colorDiffuse->evaluate(hitInfo);
+	vec3 colorSpecular      =         opacity  * m_colorSpecular->evaluate(hitInfo);
+	vec3 colorTransmittance = (1.0f - opacity) * m_colorTransmittance->evaluate(hitInfo);
+	
+	float roughnessX = m_roughnessX->evaluate(hitInfo);
+	float roughnessY = m_roughnessY->evaluate(hitInfo);
+
+	//create distribution + fresnel:
+	//---------------
+	std::shared_ptr<MicrofacetDistribution> distribution = 
+		std::make_shared<MicrofacetDistributionTrowbridgeReitz>(roughnessX, roughnessY);
+
+	std::shared_ptr<Fresnel> fresnel =
+		std::make_shared<FresnelDielectric>(ETA_I, eta);
+
+	//create bsdf:
+	//---------------	
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+
+	if(colorDiffuse != 0.0f)
+		bsdf->add_bxdf(
+			std::make_shared<BRDFLambertian>(),
+			colorDiffuse
+		);
+
+	if(colorSpecular != 0.0f)
+		bsdf->add_bxdf(
+			std::make_shared<BRDFMicrofacet>(distribution, fresnel),
+			colorSpecular
+		);
+
+	//TODO: microfacet or specular transmission?
+	if(colorTransmittance != 0.0f)
+		bsdf->add_bxdf(
+			std::make_shared<BTDFMicrofacet>(distribution, fresnel),
+			colorTransmittance
+		);
+
+	return bsdf;
 }
 
 
