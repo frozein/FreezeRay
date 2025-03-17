@@ -14,8 +14,8 @@ Object::Object(const std::vector<std::shared_ptr<const Mesh>>& meshes, const std
 		std::shared_ptr<const Material> mat = nullptr;
 		for(uint32_t j = 0; j < materials.size(); j++)
 		{
-			if(meshes[i]->get_material() == materials[i]->get_name())
-				mat = materials[i];
+			if(meshes[i]->get_material() == materials[j]->get_name())
+				mat = materials[j];
 		}
 
 		//set to default material if not found

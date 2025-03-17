@@ -105,10 +105,11 @@ typedef struct QOBJmaterial
 	QOBJcolor diffuseColor;
 	QOBJcolor specularColor;
 	QOBJcolor transmittanceColor;
-	char* ambientMapPath;  //== NULL if one does not exist
-	char* diffuseMapPath;  //== NULL if one does not exist
-	char* specularMapPath; //== NULL if one does not exist
-	char* bumpMapPath;     //== NULL if one does not exist
+	char* ambientMapPath;       //== NULL if one does not exist
+	char* diffuseMapPath;       //== NULL if one does not exist
+	char* specularMapPath;      //== NULL if one does not exist
+	char* transmittanceMapPath; //== NULL if one does not exist
+	char* bumpMapPath;          //== NULL if one does not exist
 
 	float opacity;
 	float specularExp;
@@ -467,6 +468,8 @@ void qobj_material_free(QOBJmaterial material)
 		QOBJ_FREE(material.diffuseMapPath);
 	if(material.specularMapPath)
 		QOBJ_FREE(material.specularMapPath);
+	if(material.transmittanceMapPath)
+		QOBJ_FREE(material.transmittanceMapPath);
 	if(material.bumpMapPath)
 		QOBJ_FREE(material.bumpMapPath);
 }
@@ -678,9 +681,11 @@ QOBJerror qobj_load_obj(const char* path, uint32_t* numMeshes, QOBJmesh** meshes
 
 			uint32_t insertIdx = (uint32_t)texCoordSize++ * QOBJ_ATTRIB_SIZE_TEX_COORDS;
 
-			fscanf_s(fptr, "%f %f\n", 
+			float dummy; //possible for "vt" to specify 3 coords
+			fscanf_s(fptr, "%f %f %f\n", 
 				&texCoords[insertIdx + 0], 
-				&texCoords[insertIdx + 1]
+				&texCoords[insertIdx + 1],
+				&dummy
 			);
 
 			errorCode = qobj_maybe_resize_array((void**)&texCoords, sizeof(float) * QOBJ_ATTRIB_SIZE_TEX_COORDS, texCoordSize, &texCoordCap);
@@ -747,7 +752,7 @@ QOBJerror qobj_load_obj(const char* path, uint32_t* numMeshes, QOBJmesh** meshes
 			if(curMesh == UINT32_MAX)
 				for(uint32_t i = 0; i < *numMeshes; i++)
 				{
-					if(strcmp(curMaterial, meshes[i]->material) == 0)
+					if(strcmp(curMaterial, (*meshes)[i].material) == 0)
 					{
 						curMesh = i;
 						break;
@@ -934,7 +939,7 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 			qobj_fgets(fptr, curToken, &curTokenEnd);
 
 			curMaterial = *numMaterials;
-			QOBJmaterial* newMaterials = (QOBJmaterial*)QOBJ_REALLOC(*materials, *numMaterials * sizeof(QOBJmaterial));
+			QOBJmaterial* newMaterials = (QOBJmaterial*)QOBJ_REALLOC(*materials, (*numMaterials + 1) * sizeof(QOBJmaterial));
 			if(!newMaterials)
 			{
 				errorCode = QOBJ_ERROR_OUT_OF_MEM;
@@ -1019,6 +1024,13 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 			qobj_fgets(fptr, mapPath, &curTokenEnd);
 
 			(*materials)[curMaterial].specularMapPath = mapPath;
+		}
+		else if(strcmp(curToken, "map_Kt") == 0)
+		{
+			char* mapPath = (char*)QOBJ_MALLOC(QOBJ_MAX_TOKEN_LEN * sizeof(char));
+			qobj_fgets(fptr, mapPath, &curTokenEnd);
+
+			(*materials)[curMaterial].transmittanceMapPath = mapPath;
 		}
 		else if(strcmp(curToken, "map_Bump") == 0)
 		{

@@ -10,8 +10,8 @@ namespace fr
 {
 
 template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::shared_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode) : 
-	m_repeatMode(repeatMode)
+TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::shared_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode, T multiplier) : 
+	m_repeatMode(repeatMode), m_multiplier(multiplier)
 {
 	//validate input:
 	//---------------
@@ -38,7 +38,7 @@ TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::sha
 
 	Image baseImage;
 	if(!isPowerOf2)
-		baseImage = resize_to_power_of_2(width, height, image.get(), repeatMode);
+		baseImage = resize_to_power_of_2(width, height, image, repeatMode);
 	else
 	{
 		baseImage.width = width;
@@ -93,21 +93,24 @@ T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
 
 	float level = m_mipPyramid.size() - 1 + std::log2f(std::max(width, 1e-10f));
 
+	T sampled;
 	if(level < 0.0f)
-		return bilinear(0, hitInfo.uv);
+		sampled = bilinear(0, hitInfo.uv);
 	else if(level >= m_mipPyramid.size() - 1)
-		return get_texel((uint32_t)m_mipPyramid.size() - 1, 0, 0);
+		sampled = get_texel((uint32_t)m_mipPyramid.size() - 1, 0, 0);
 	else
 	{
 		uint32_t level0 = (uint32_t)level;
 		float dl = level - level0;
 
-		return (1.0f - dl) * bilinear(level0, hitInfo.uv) + dl * bilinear(level0 + 1, hitInfo.uv);
+		sampled = (1.0f - dl) * bilinear(level0, hitInfo.uv) + dl * bilinear(level0 + 1, hitInfo.uv);
 	}
+
+	return sampled * m_multiplier;
 }
 
 template<typename T, typename Tmemory>
-std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode)
+std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode, T multiplier)
 {
 	static_assert(sizeof(Tmemory) <= 4, "cannot load an image with >4 components");
 
@@ -132,6 +135,8 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 			throw std::runtime_error("failed to load image from \"" + path + "\"");
 	}
 
+	std::shared_ptr<Tmemory[]> image = std::shared_ptr<Tmemory[]>((Tmemory*)imageRaw, [](const Tmemory* img){ stbi_image_free((void*)img); });
+
 	//resize to power of 2:
 	//---------------
 	bool isPowerOf2 = true;
@@ -150,30 +155,25 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 		heightTemp >>= 1;
 	}
 
-	Image image;
+	Image sizedImage;
 	if(!isPowerOf2)
-		image = resize_to_power_of_2(width, height, (Tmemory*)imageRaw, repeatMode);
+		sizedImage = resize_to_power_of_2(width, height, image, repeatMode);
 	else
 	{
-		std::shared_ptr<Tmemory[]> mem = std::shared_ptr<Tmemory[]>(new Tmemory[width * height]);
-		std::memcpy(mem.get(), imageRaw, width * height * sizeof(Tmemory));
-
-		image.width = width;
-		image.height = height;
-		image.image = mem;
+		sizedImage.width = width;
+		sizedImage.height = height;
+		sizedImage.image = image;
 	}
 
-	//cleanup + return:
+	//return:
 	//---------------
-	stbi_image_free(imageRaw);
-
-	return std::make_shared<TextureImage<T, Tmemory>>(image.width, image.height, image.image, repeatMode);
+	return std::make_shared<TextureImage<T, Tmemory>>(sizedImage.width, sizedImage.height, sizedImage.image, repeatMode, multiplier);
 }
 
 template<typename T, typename Tmemory, typename Tother>
-static std::shared_ptr<TextureImage<T, Tmemory>> from_texture_image(const std::shared_ptr<TextureImage<Tother, Tmemory>>& image)
+static std::shared_ptr<TextureImage<T, Tmemory>> from_texture_image(const std::shared_ptr<TextureImage<Tother, Tmemory>>& image, T multiplier)
 {
-	return std::make_shared<TextureImage<T, Tmemory>>(image->m_mipPyramid, image->m_repeatMode);
+	return std::make_shared<TextureImage<T, Tmemory>>(image->m_mipPyramid, image->m_repeatMode, multiplier);
 }
 
 //-------------------------------------------//
@@ -229,7 +229,7 @@ inline T TextureImage<T, Tmemory>::bilinear(uint32_t level, const vec2& uv) cons
 //-------------------------------------------//
 
 template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(uint32_t width, uint32_t height, const Tmemory* image, TextureRepeatMode repeatMode)
+TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(uint32_t width, uint32_t height, std::shared_ptr<const Tmemory[]> image, TextureRepeatMode repeatMode)
 {
 	//compute power-of-2 dims:
 	//---------------
@@ -247,7 +247,7 @@ TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(u
 	std::unique_ptr<int32_t[]>& firstTexelX = resamplingWeightsX.first;
 	std::unique_ptr<float[]>& weightsX = resamplingWeightsX.second;
 
-	Tmemory* resampledX = new Tmemory[newWidth * height];
+	std::shared_ptr<Tmemory[]> resampledX = std::shared_ptr<Tmemory[]>(new Tmemory[newWidth * height]);
 	for(uint32_t y = 0; y < height; y++)
 	for(uint32_t x = 0; x < newWidth; x++)
 	{
@@ -285,7 +285,7 @@ TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(u
 	std::unique_ptr<int32_t[]>& firstTexelY = resamplingWeightsY.first;
 	std::unique_ptr<float[]>& weightsY = resamplingWeightsY.second;	
 
-	Tmemory* resampledY = new Tmemory[newWidth * newHeight];
+	std::shared_ptr<Tmemory[]> resampledY = std::shared_ptr<Tmemory[]>(new Tmemory[newWidth * newHeight]);
 	for(uint32_t x = 0; x < newWidth; x++)
 	for(uint32_t y = 0; y < newHeight; y++)
 	{
@@ -317,10 +317,9 @@ TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(u
 		resampledY[idx] = mem;
 	}
 
-	//cleanup + return:
+	//return:
 	//---------------
-	delete resampledX;
-	return { newWidth, newHeight, std::unique_ptr<const Tmemory[]>(resampledY) };
+	return { newWidth, newHeight, resampledY };
 }
 
 template<typename T, typename Tmemory>

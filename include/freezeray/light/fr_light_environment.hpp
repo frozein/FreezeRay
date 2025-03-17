@@ -17,7 +17,7 @@ namespace fr
 class LightEnvironment : public Light
 {
 public:
-	LightEnvironment(std::unique_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius = 1.0f);
+	LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius = 1.0f);
 	LightEnvironment(const std::string& path, float worldRadius = 1.0f);
 
 	vec3 sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const override;
@@ -29,7 +29,7 @@ public:
 private:
 	uint32_t m_width;
 	uint32_t m_height;
-	std::unique_ptr<const vec3[]> m_image;
+	std::shared_ptr<const vec3[]> m_image;
 
 	float m_area;
 	float m_luminance;

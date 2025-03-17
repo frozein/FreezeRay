@@ -392,11 +392,11 @@ std::vector<std::shared_ptr<const Mesh>> Mesh::from_obj(std::string path)
 		if(meshes[i].vertexAttribs & QOBJ_VERTEX_ATTRIB_NORMAL)
 			attribs |= VERTEX_ATTRIB_NORMAL;
 
-		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, std::move(indices), std::move(verts), "", 
+		result.push_back(std::make_shared<Mesh>(attribs, meshes[i].numIndices / 3, std::move(indices), std::move(verts), meshes[i].material, 
 						 meshes[i].vertexStride, meshes[i].vertexPosOffset, meshes[i].vertexTexCoordOffset, meshes[i].vertexNormalOffset));
 	}
 
-	//cleanup:
+	//cleanup + return:
 	//---------------
 	qobj_free_obj(numMeshes, meshes);
 
@@ -436,7 +436,7 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 	vec3 v0v2 = v2 - v0;
 	vec3 pvec = cross(ray.direction(), v0v2);
 	float det = dot(v0v1, pvec);
-	if(abs(det) < FR_EPSILON)
+	if(abs(det) < std::numeric_limits<float>::epsilon())
 		return false;
 
 	float invDet = 1.0f / det;

@@ -9,8 +9,8 @@
 namespace fr
 {
 
-LightEnvironment::LightEnvironment(std::unique_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius) :
-	Light(false, true), m_image(std::move(image)), m_width(width), m_height(height), m_worldRadius(worldRadius)
+LightEnvironment::LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius) :
+	Light(false, true), m_image(image), m_width(width), m_height(height), m_worldRadius(worldRadius)
 {
 	//validate:
 	//---------------
@@ -30,6 +30,8 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 {
 	//load image:
 	//---------------
+	stbi_set_flip_vertically_on_load(false);
+
 	int width;
 	int height;
 	int numChannels;
@@ -37,15 +39,9 @@ LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
 	if(!imageRaw)
 		throw std::runtime_error("failed to load image from \"" + path + "\"");
 
-	//TODO: don't copy this
-
-	m_image = std::unique_ptr<vec3[]>(new vec3[width * height]);
+	m_image = std::shared_ptr<vec3[]>((vec3*)imageRaw, [](const vec3* img) { stbi_image_free((void*)img); });
 	m_width = (uint32_t)width;
 	m_height = (uint32_t)height;
-
-	memcpy((void*)m_image.get(), (void*)imageRaw, width * height * sizeof(vec3));
-
-	stbi_image_free((void*)imageRaw);
 
 	//generate texel distribution:
 	//---------------

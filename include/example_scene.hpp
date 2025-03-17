@@ -25,7 +25,7 @@ struct ExampleScene
 //spheres with different materials lit by an environment map
 ExampleScene example_material_demo(const std::string& envMap);
 
-//for scratch work
-ExampleScene scratch();
+//sponza palace scene
+ExampleScene example_sponza();
 
 #endif //#ifndef EXAMPLE_SCENE_H
