@@ -192,7 +192,7 @@ bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, Inters
 	while(true)
 	{
 		//early exit if intersection was already found
-		if(tMin < tMaxKD)
+		if(tMin < tMinKD)
 			break;
 
 		//get node, process interior or leaf
@@ -537,7 +537,7 @@ void Mesh::KDtreeNode::init_leaf(uint32_t _numTris, uint32_t* tris, std::vector<
 	numTris |= (_numTris << 2);
 
 	triIndicesOffset = (uint32_t)triIndices.size();
-	for(uint32_t i = 0; i < numTris; ++i)
+	for(uint32_t i = 0; i < _numTris; i++)
 		triIndices.push_back(tris[i]);
 }
 

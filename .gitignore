@@ -27,3 +27,6 @@ x32/
 
 # binary files:
 *.dll
+
+# assets folder:
+assets/

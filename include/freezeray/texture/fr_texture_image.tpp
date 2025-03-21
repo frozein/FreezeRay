@@ -65,11 +65,11 @@ TextureImage<T, Tmemory>::TextureImage(uint32_t width, uint32_t height, std::sha
 
 		std::shared_ptr<Tmemory[]> levelImage = std::shared_ptr<Tmemory[]>(new Tmemory[levelWidth * levelHeight]);
 		
-		for(uint32_t y = 0; y < levelHeight; y++)
-		for(uint32_t x = 0; x < levelWidth; x++)
+		for(int32_t y = 0; y < (int32_t)levelHeight; y++)
+		for(int32_t x = 0; x < (int32_t)levelWidth; x++)
 		{
 			T sample = (
-				get_texel(i - 1, 2 * x, 2 * y) + get_texel(i - 1, 2 * x + 1, 2 * y) +
+				get_texel(i - 1, 2 * x, 2 * y    ) + get_texel(i - 1, 2 * x + 1, 2 * y    ) +
 				get_texel(i - 1, 2 * x, 2 * y + 1) + get_texel(i - 1, 2 * x + 1, 2 * y + 1)
 			) / 4.0f;
 
@@ -186,19 +186,19 @@ TextureImage<T, Tmemory>::TextureImage(const std::vector<Image>& mipPyramid, Tex
 }
 
 template<typename T, typename Tmemory>
-inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, uint32_t u, uint32_t v) const
+inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, int32_t u, int32_t v) const
 {
 	const Image& image = m_mipPyramid[level];
 
 	switch(m_repeatMode)
 	{
 	case TextureRepeatMode::REPEAT:
-		u %= image.width;
-		v %= image.height;
+		u = (u % image.width  + image.width ) % image.width;
+		v = (v % image.height + image.height) % image.height;
 		break;
 	case TextureRepeatMode::CLAMP_TO_EDGE:
-		u = std::min(u, image.width  - 1);
-		v = std::min(v, image.height - 1);
+		u = std::min(std::max(u, 0), (int32_t)image.width  - 1);
+		v = std::min(std::max(v, 0), (int32_t)image.height - 1);
 		break;
 	default:
 		throw std::invalid_argument("invalid repeat mode");
@@ -216,8 +216,8 @@ inline T TextureImage<T, Tmemory>::bilinear(uint32_t level, const vec2& uv) cons
 	float u = uv.x * m_mipPyramid[level].width  - 0.5f;
 	float v = uv.y * m_mipPyramid[level].height - 0.5f;
 
-	uint32_t u0 = (uint32_t)u;
-	uint32_t v0 = (uint32_t)v;
+	int32_t u0 = (int32_t)std::floor(u);
+	int32_t v0 = (int32_t)std::floor(v);
 
 	float du = u - u0;
 	float dv = v - v0;

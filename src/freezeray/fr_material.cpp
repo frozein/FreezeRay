@@ -64,7 +64,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		vec3 diffuseColor = vec3(material.diffuseColor.r, material.diffuseColor.g, material.diffuseColor.b);
 		if(materials[i].diffuseMapPath)
 			diffuseColorTex = TextureImage<vec3, uint32_t>::from_file(
-				prefix + material.diffuseMapPath, false, TextureRepeatMode::CLAMP_TO_EDGE, diffuseColor
+				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, diffuseColor
 			);
 		else
 			diffuseColorTex = std::make_shared<TextureConstant<vec3>>(diffuseColor);
@@ -72,7 +72,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		vec3 specularColor = vec3(material.specularColor.r, material.specularColor.g, material.specularColor.b);
 		if(materials[i].specularMapPath)
 			specularColorTex = TextureImage<vec3, uint32_t>::from_file(
-				prefix + material.specularMapPath, false, TextureRepeatMode::CLAMP_TO_EDGE, specularColor
+				prefix + material.specularMapPath, false, TextureRepeatMode::REPEAT, specularColor
 			);
 		else
 			specularColorTex = std::make_shared<TextureConstant<vec3>>(specularColor);
@@ -80,7 +80,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		vec3 transmittanceColor = vec3(material.transmittanceColor.r, material.transmittanceColor.g, material.transmittanceColor.b);
 		if(materials[i].transmittanceMapPath)
 			transmittanceColorTex = TextureImage<vec3, uint32_t>::from_file(
-				prefix + material.transmittanceMapPath, false, TextureRepeatMode::CLAMP_TO_EDGE, transmittanceColor
+				prefix + material.transmittanceMapPath, false, TextureRepeatMode::REPEAT, transmittanceColor
 			);
 		else
 			transmittanceColorTex = std::make_shared<TextureConstant<vec3>>(transmittanceColor);
