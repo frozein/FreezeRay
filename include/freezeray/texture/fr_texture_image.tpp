@@ -308,7 +308,7 @@ TextureImage<T, Tmemory>::Image TextureImage<T, Tmemory>::resize_to_power_of_2(u
 			T sample;
 			convert_from_texture_memory(resampledX[sampleIdx], sample);
 
-			val = val + vec3(weightsY[y * 4 + i]) * sample;
+			val = val + T(weightsY[y * 4 + i]) * sample;
 		}
 
 		uint32_t idx = x + newWidth * y;
@@ -391,6 +391,16 @@ inline void convert_from_texture_memory(uint8_t mem, float& val)
 inline void convert_to_texture_memory(float val, uint8_t& mem)
 {
 	mem = (uint8_t)(val * 255.0f);
+}
+
+inline void convert_from_texture_memory(uint32_t mem, float& val)
+{
+	val = (mem >> 24) / 255.0f;
+}
+
+inline void convert_to_texture_memory(float val, uint32_t& mem)
+{
+	mem = (uint32_t)(val * 255.0f) << 24;
 }
 
 }; //namespace fr

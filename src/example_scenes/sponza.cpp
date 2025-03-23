@@ -3,6 +3,7 @@
 #include "freezeray/fr_object.hpp"
 #include "freezeray/light/fr_light_directional.hpp"
 #include "freezeray/light/fr_light_area.hpp"
+#include "freezeray/light/fr_light_environment.hpp"
 #include "freezeray/bxdf/fr_brdf_lambertian.hpp"
 #include "freezeray/material/fr_material_single_bxdf.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
@@ -39,8 +40,8 @@ ExampleScene example_sponza()
 		std::make_shared<fr::LightArea>(light2Mesh, light2Transform, vec3(1.0f, 0.1f, 0.1f));
 		
 	std::vector<std::shared_ptr<const fr::Light>> lightList = {
-		light1,
-		light2
+		light1
+		//light2
 	};
 	
 	//define scene:

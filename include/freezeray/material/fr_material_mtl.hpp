@@ -1,7 +1,6 @@
 /* fr_material_uber.hpp
  *
- * contains a definition for an "uber" material, representing a wide range of
- * possible materials in one. Useful for loading materials from 3D object files
+ * contains a definition for a material from an OBJ MTL file
  */
 
 #ifndef FR_MATERIAL_UBER_H
@@ -15,12 +14,12 @@
 namespace fr
 {
 
-class MaterialUber : public Material
+class MaterialMTL : public Material
 {
 public:
-	MaterialUber(const std::string& name, std::shared_ptr<const Texture<vec3>> colorDiffuse, std::shared_ptr<const Texture<vec3>> colorSpecular,
+	MaterialMTL(const std::string& name, std::shared_ptr<const Texture<vec3>> colorDiffuse, std::shared_ptr<const Texture<vec3>> colorSpecular,
 	             std::shared_ptr<const Texture<vec3>> colorTransmittance, std::shared_ptr<const Texture<float>> roughnessX,
-	             std::shared_ptr<const Texture<float>> roughnessY, std::shared_ptr<const Texture<vec3>> opacity,
+	             std::shared_ptr<const Texture<float>> roughnessY, std::shared_ptr<const Texture<float>> opacity,
 	             std::shared_ptr<const Texture<float>> eta);
 
 	std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const;
@@ -31,7 +30,7 @@ private:
 	std::shared_ptr<const Texture<vec3>> m_colorTransmittance;
 	std::shared_ptr<const Texture<float>> m_roughnessX;
 	std::shared_ptr<const Texture<float>> m_roughnessY;
-	std::shared_ptr<const Texture<vec3>> m_opacity;
+	std::shared_ptr<const Texture<float>> m_opacity;
 	std::shared_ptr<const Texture<float>> m_eta;
 };
 

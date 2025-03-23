@@ -2,7 +2,7 @@
 
 #include "freezeray/fr_globals.hpp"
 #include "freezeray/quickobj.h"
-#include "freezeray/material/fr_material_uber.hpp"
+#include "freezeray/material/fr_material_mtl.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
 #include "freezeray/texture/fr_texture_image.hpp"
 #include <filesystem>
@@ -56,13 +56,13 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		std::shared_ptr<Texture<vec3>> diffuseColorTex;
 		std::shared_ptr<Texture<vec3>> specularColorTex;
 		std::shared_ptr<Texture<vec3>> transmittanceColorTex;
-		std::shared_ptr<Texture<vec3>> opacityTex;
+		std::shared_ptr<Texture<float>> opacityTex;
 		std::shared_ptr<Texture<float>> roughnessTex;
 		std::shared_ptr<Texture<float>> etaTex;
 
 		//create textures:
 		vec3 diffuseColor = vec3(material.diffuseColor.r, material.diffuseColor.g, material.diffuseColor.b);
-		if(materials[i].diffuseMapPath)
+		if(material.diffuseMapPath)
 			diffuseColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, diffuseColor
 			);
@@ -70,7 +70,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			diffuseColorTex = std::make_shared<TextureConstant<vec3>>(diffuseColor);
 
 		vec3 specularColor = vec3(material.specularColor.r, material.specularColor.g, material.specularColor.b);
-		if(materials[i].specularMapPath)
+		if(material.specularMapPath)
 			specularColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.specularMapPath, false, TextureRepeatMode::REPEAT, specularColor
 			);
@@ -78,14 +78,19 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			specularColorTex = std::make_shared<TextureConstant<vec3>>(specularColor);
 
 		vec3 transmittanceColor = vec3(material.transmittanceColor.r, material.transmittanceColor.g, material.transmittanceColor.b);
-		if(materials[i].transmittanceMapPath)
+		if(material.transmittanceMapPath)
 			transmittanceColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.transmittanceMapPath, false, TextureRepeatMode::REPEAT, transmittanceColor
 			);
 		else
 			transmittanceColorTex = std::make_shared<TextureConstant<vec3>>(transmittanceColor);
 
-		opacityTex = std::make_shared<TextureConstant<vec3>>(material.opacity);
+		if(material.opacityMapPath)
+			opacityTex = TextureImage<float, uint8_t>::from_file(
+				prefix + material.opacityMapPath, false, TextureRepeatMode::REPEAT, material.opacity
+			);
+		else
+			opacityTex = std::make_shared<TextureConstant<float>>(material.opacity);
 		
 		float roughnessVal = material.specularExp == 0.0f ? 0.0f : 1.0f / material.specularExp;
 		roughnessVal = std::min(std::max(roughnessVal, 0.0f), 1.0f);
@@ -94,7 +99,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		etaTex = std::make_shared<TextureConstant<float>>(material.refractionIndex);
 
 		//create material:
-		std::shared_ptr<Material> uberMaterial = std::make_shared<MaterialUber>(
+		std::shared_ptr<Material> uberMaterial = std::make_shared<MaterialMTL>(
 			material.name,
 			diffuseColorTex, specularColorTex, transmittanceColorTex,
 			roughnessTex, roughnessTex,

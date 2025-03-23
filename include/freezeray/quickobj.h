@@ -109,6 +109,7 @@ typedef struct QOBJmaterial
 	char* diffuseMapPath;       //== NULL if one does not exist
 	char* specularMapPath;      //== NULL if one does not exist
 	char* transmittanceMapPath; //== NULL if one does not exist
+	char* opacityMapPath;       //== NULL if one does not exist
 	char* bumpMapPath;          //== NULL if one does not exist
 
 	float opacity;
@@ -928,8 +929,7 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 		if(curToken[0] == '\0')
 			continue;
 
-		if(curToken[0] == '#' || strcmp(curToken, "illum") == 0 ||
-		   strcmp(curToken, "Tf") == 0) //comments / ignored commands
+		if(curToken[0] == '#' || strcmp(curToken, "illum") == 0) //comments / ignored commands
 		{
 			if(isspace(curTokenEnd))
 				qobj_fgets(fptr, curToken, &curTokenEnd);
@@ -1031,6 +1031,13 @@ QOBJerror qobj_load_mtl(const char* path, uint32_t* numMaterials, QOBJmaterial**
 			qobj_fgets(fptr, mapPath, &curTokenEnd);
 
 			(*materials)[curMaterial].transmittanceMapPath = mapPath;
+		}
+		else if(strcmp(curToken, "map_d") == 0)
+		{
+			char* mapPath = (char*)QOBJ_MALLOC(QOBJ_MAX_TOKEN_LEN * sizeof(char));
+			qobj_fgets(fptr, mapPath, &curTokenEnd);
+
+			(*materials)[curMaterial].opacityMapPath = mapPath;
 		}
 		else if(strcmp(curToken, "map_Bump") == 0)
 		{

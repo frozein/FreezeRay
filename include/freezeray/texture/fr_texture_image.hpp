@@ -57,6 +57,9 @@ inline void convert_to_texture_memory(vec3 val, uint32_t& mem);
 inline void convert_from_texture_memory(uint8_t mem, float& val);
 inline void convert_to_texture_memory(float val, uint8_t& mem);
 
+inline void convert_from_texture_memory(uint32_t mem, float& val);
+inline void convert_to_texture_memory(float val, uint32_t& mem);
+
 }; //namespace fr
 
 //include templated definitions
