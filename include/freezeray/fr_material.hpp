@@ -14,6 +14,7 @@
 
 #include "fr_bsdf.hpp"
 #include "fr_raycast_info.hpp"
+#include "fr_texture.hpp"
 
 //-------------------------------------------//
 
@@ -28,9 +29,10 @@ public:
 	const std::string& get_name() const;
 	void set_name(const std::string& name);
 
-	virtual std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const = 0;
+	virtual std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const = 0;	
+	virtual std::shared_ptr<const Texture<float>> get_alpha_mask() const;
 
-	static std::vector<std::shared_ptr<const Material>> from_mtl(const std::string& path);
+	static std::vector<std::shared_ptr<const Material>> from_mtl(const std::string& path, bool opacityIsMask = true);
 
 private:
 	std::string m_name;

@@ -53,7 +53,7 @@ int main(int argc, char** argv)
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		100,
+		1,
 		true,
 		true
 	);

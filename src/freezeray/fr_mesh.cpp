@@ -126,7 +126,7 @@ vec3 Mesh::get_vert_normal_at(uint32_t idx) const
 	return *reinterpret_cast<const vec3*>(&m_verts.get()[idx * m_vertStride + m_vertNormalOffset]);
 }
 
-bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const
+bool Mesh::intersect(const Ray& ray, std::shared_ptr<const Texture<float>> alphaMask, float& tMin, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const
 {
 	//get ray info:
 	//---------------
@@ -248,7 +248,8 @@ bool Mesh::intersect(const Ray& ray, float& tMin, vec2& uv, vec3& normal, Inters
 		
 				float t;
 				float b0, b1; //barycentric coordinates
-				if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < tMin)
+				if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < tMin &&
+				   test_alpha_mask(alphaMask, idx0, idx1, idx2, b0, b1))
 				{
 					hit |= true;
 		
@@ -453,6 +454,36 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 
 	t = dot(v0v2, qvec) * invDet;
 	return t > FR_EPSILON;
+}
+
+bool Mesh::test_alpha_mask(std::shared_ptr<const Texture<float>> alphaMask, uint32_t idx0, uint32_t idx1, uint32_t idx2, float b0, float b1) const
+{
+	if(alphaMask == nullptr)
+		return true;
+
+	if((m_vertAttribs & VERTEX_ATTRIB_UV) == 0)
+		return true;
+
+	//get uv:
+	//---------------
+	float* verts = m_verts.get();
+	const vec2* uv0 = reinterpret_cast<const vec2*>(&verts[idx0 + m_vertUvOffset]);
+	const vec2* uv1 = reinterpret_cast<const vec2*>(&verts[idx1 + m_vertUvOffset]);
+	const vec2* uv2 = reinterpret_cast<const vec2*>(&verts[idx2 + m_vertUvOffset]);
+	
+	float b2 = 1.0f - b0 - b1;
+	vec2 uv = *uv0 * b2 + *uv1 * b0 + *uv2 * b1;
+
+	//evaluate texture (just want the texel, no mipmapping):
+	//---------------
+	IntersectionInfo evalInfo;
+	evalInfo.uv = uv;
+	evalInfo.derivatives.dpdx = 0.0f;
+	evalInfo.derivatives.dpdy = 0.0f;
+	evalInfo.derivatives.duvdx = 0.0f;
+	evalInfo.derivatives.duvdy = 0.0f;
+
+	return alphaMask->evaluate(evalInfo) > 0.0f;
 }
 
 void Mesh::intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v)

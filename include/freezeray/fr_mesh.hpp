@@ -14,6 +14,7 @@
 #include "fr_ray.hpp"
 #include "fr_globals.hpp"
 #include "fr_raycast_info.hpp"
+#include "fr_texture.hpp"
 
 //-------------------------------------------//
 
@@ -47,7 +48,8 @@ public:
 	vec2 get_vert_uv_at(uint32_t idx) const;
 	vec3 get_vert_normal_at(uint32_t idx) const;
 
-	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const;
+	bool intersect(const Ray& ray, std::shared_ptr<const Texture<float>> alphaMash, 
+	               float& t, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs) const;
 
 	//-------------------------------------------//
 
@@ -76,6 +78,8 @@ private:
 
 	static bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
 	static void intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
+
+	bool test_alpha_mask(std::shared_ptr<const Texture<float>> alphaMask, uint32_t idx0, uint32_t idx1, uint32_t idx2, float b0, float b1) const;
 
 	//-------------------------------------------//
 	//KD TREE DATA:

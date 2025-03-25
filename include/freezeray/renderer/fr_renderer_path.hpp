@@ -28,7 +28,7 @@ private:
 	bool m_mis;
 
 	vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
-	vec3 trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
+	vec3 trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray, bool initialHit, const IntersectionInfo& initialHitInfo) const;
 };
 
 }; //namespace fr

@@ -28,7 +28,12 @@ void Material::set_name(const std::string& name)
 	m_name = name; 
 };
 
-std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::string& path)
+std::shared_ptr<const Texture<float>> Material::get_alpha_mask() const
+{
+	return nullptr;
+}
+
+std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::string& path, bool opacityIsMask)
 {
 	std::vector<std::shared_ptr<const Material>> result = {};
 
@@ -89,21 +94,26 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			opacityTex = TextureImage<float, uint8_t>::from_file(
 				prefix + material.opacityMapPath, false, TextureRepeatMode::REPEAT, material.opacity
 			);
+		else if(material.diffuseMapPath)
+		{
+			std::shared_ptr<TextureImage<vec3, uint32_t>> diffuseImage = std::dynamic_pointer_cast<TextureImage<vec3, uint32_t>>(diffuseColorTex);
+			opacityTex = std::make_shared<TextureImage<float, uint32_t>>(
+				diffuseImage->get_mip_pyramid(), diffuseImage->get_repeat_mode(), 1.0f
+			);
+		}
 		else
 			opacityTex = std::make_shared<TextureConstant<float>>(material.opacity);
 		
-		float roughnessVal = material.specularExp == 0.0f ? 0.0f : 1.0f / material.specularExp;
-		roughnessVal = std::min(std::max(roughnessVal, 0.0f), 1.0f);
-		roughnessTex = std::make_shared<TextureConstant<float>>(roughnessVal);
-
-		etaTex = std::make_shared<TextureConstant<float>>(material.refractionIndex);
+		float eta = material.refractionIndex;
+		float roughness = material.specularExp == 0.0f ? 0.0f : 1.0f / material.specularExp;
+		roughness = std::max(std::min(roughness, 0.0f), 1.0f);
 
 		//create material:
 		std::shared_ptr<Material> uberMaterial = std::make_shared<MaterialMTL>(
 			material.name,
 			diffuseColorTex, specularColorTex, transmittanceColorTex,
-			roughnessTex, roughnessTex,
-			opacityTex, etaTex
+			opacityTex, roughness, eta,
+			opacityIsMask
 		);
 
 		result.push_back(uberMaterial);

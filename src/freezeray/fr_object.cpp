@@ -50,17 +50,19 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, Inte
 
 	for(uint32_t i = 0; i < m_components.size(); i++)
 	{
+		std::shared_ptr<const Material> mat = m_components[i].material;
+
 		float t;
 		vec2 newUV;
 		vec3 newNormal;
 		IntersectionInfo::Derivatives newDerivs;
-		if(m_components[i].mesh->intersect(ray, t, newUV, newNormal, newDerivs) && t < minT)
+		if(m_components[i].mesh->intersect(ray, mat->get_alpha_mask(), t, newUV, newNormal, newDerivs) && t < minT)
 		{
 			hit |= true;
 			minT = t;
 			uv = newUV;
 			normal = newNormal;
-			material = m_components[i].material;
+			material = mat;
 			derivs = newDerivs;
 		}
 	}
@@ -68,10 +70,10 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, Inte
 	return hit;
 }
 
-std::shared_ptr<const Object> Object::from_obj(const std::string& objPath, const std::string& mtlPath)
+std::shared_ptr<const Object> Object::from_obj(const std::string& objPath, const std::string& mtlPath, bool opacityIsMask)
 {
 	std::vector<std::shared_ptr<const Mesh>> meshes = Mesh::from_obj(objPath);
-	std::vector<std::shared_ptr<const Material>> materials = Material::from_mtl(mtlPath);
+	std::vector<std::shared_ptr<const Material>> materials = Material::from_mtl(mtlPath, opacityIsMask);
 
 	return std::make_shared<Object>(meshes, materials);
 }

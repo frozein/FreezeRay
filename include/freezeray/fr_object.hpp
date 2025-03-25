@@ -30,7 +30,7 @@ public:
 
 	bool intersect(const Ray& ray, float& t, vec2& uv, vec3& normal, IntersectionInfo::Derivatives& derivs, std::shared_ptr<const Material>& material) const;
 
-	static std::shared_ptr<const Object> from_obj(const std::string& objPath, const std::string& mtlPath);
+	static std::shared_ptr<const Object> from_obj(const std::string& objPath, const std::string& mtlPath, bool opacityIsMask = true);
 
 private:
 	std::vector<ObjectComponent> m_components;

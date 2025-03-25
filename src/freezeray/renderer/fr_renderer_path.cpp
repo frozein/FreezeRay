@@ -23,14 +23,17 @@ RendererPath::~RendererPath()
 
 vec3 RendererPath::li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
+	IntersectionInfo initialHitInfo;
+	bool initialHit = scene->intersect(ray, initialHitInfo);
+
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
-		li = li + trace_path(scene, ray);
+		li = li + trace_path(scene, ray, initialHit, initialHitInfo);
 
 	return li / (float)m_samplesPerPixel;
 }
 
-vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
+vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray, bool initialHit, const IntersectionInfo& initialHitInfo) const
 {
 	vec3 light = vec3(0.0f);
 	vec3 mult = vec3(1.0f);
@@ -41,7 +44,14 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 	for(uint32_t i = 0; i < m_maxDepth; i++)
 	{
 		IntersectionInfo hitInfo;
-		bool hit = scene->intersect(curRay, hitInfo);
+		bool hit;
+		if(i == 0)
+		{
+			hit = initialHit;
+			hitInfo = initialHitInfo;
+		}
+		else
+			hit = scene->intersect(curRay, hitInfo);
 
 		//negate ray direction to get wo:
 		vec3 wo = -1.0f * curRay.direction();
