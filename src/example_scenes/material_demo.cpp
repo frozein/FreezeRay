@@ -6,6 +6,7 @@
 #include "freezeray/microfacet_distribution/fr_microfacet_distribution_trowbridge_reitz.hpp"
 #include "freezeray/microfacet_distribution/fr_microfacet_distribution_beckmann.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
+#include "freezeray/texture/fr_texture_image.hpp"
 #include "freezeray/material/fr_material_single_bxdf.hpp"
 #include "freezeray/material/fr_material_metal.hpp"
 #include "freezeray/material/fr_material_glass.hpp"

@@ -44,7 +44,8 @@ int main(int argc, char** argv)
 	//load scene:
 	//---------------
 	//ExampleScene scene = example_material_demo("assets/test_skybox.hdr");
-	ExampleScene scene = example_sponza();
+	//ExampleScene scene = example_sponza();
+	ExampleScene scene = example_san_miguel();
 
 	//create renderer:
 	//---------------
@@ -53,7 +54,7 @@ int main(int argc, char** argv)
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		1,
+		100,
 		true,
 		true
 	);

@@ -5,6 +5,7 @@
 #include "freezeray/material/fr_material_mtl.hpp"
 #include "freezeray/texture/fr_texture_constant.hpp"
 #include "freezeray/texture/fr_texture_image.hpp"
+#include "freezeray/texture/stb_image.h"
 #include <filesystem>
 
 //-------------------------------------------//
@@ -65,12 +66,26 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 		std::shared_ptr<Texture<float>> roughnessTex;
 		std::shared_ptr<Texture<float>> etaTex;
 
+		bool diffuseHasAlpha = false;
+
 		//create textures:
 		vec3 diffuseColor = vec3(material.diffuseColor.r, material.diffuseColor.g, material.diffuseColor.b);
 		if(material.diffuseMapPath)
+		{
+			//check if diffuse texture has alpha
+			int width;
+			int height;
+			int numComp;
+			stbi_info((prefix + material.diffuseMapPath).c_str(), &width, &height, &numComp);
+			
+			if(numComp >= 4)
+				diffuseHasAlpha = true;
+
+			//create texture
 			diffuseColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, diffuseColor
 			);
+		}
 		else
 			diffuseColorTex = std::make_shared<TextureConstant<vec3>>(diffuseColor);
 
@@ -94,13 +109,10 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			opacityTex = TextureImage<float, uint8_t>::from_file(
 				prefix + material.opacityMapPath, false, TextureRepeatMode::REPEAT, material.opacity
 			);
-		else if(material.diffuseMapPath)
-		{
-			std::shared_ptr<TextureImage<vec3, uint32_t>> diffuseImage = std::dynamic_pointer_cast<TextureImage<vec3, uint32_t>>(diffuseColorTex);
-			opacityTex = std::make_shared<TextureImage<float, uint32_t>>(
-				diffuseImage->get_mip_pyramid(), diffuseImage->get_repeat_mode(), 1.0f
+		else if(diffuseHasAlpha) //TODO: fix sharing memory, broken! OR: dont store a full uint32 !!!!
+			opacityTex = TextureImage<float, uint32_t>::from_file(
+				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, material.opacity
 			);
-		}
 		else
 			opacityTex = std::make_shared<TextureConstant<float>>(material.opacity);
 		

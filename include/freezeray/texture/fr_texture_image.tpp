@@ -397,7 +397,7 @@ inline void convert_from_texture_memory(uint32_t mem, float& val)
 
 inline void convert_to_texture_memory(float val, uint32_t& mem)
 {
-	mem = (uint32_t)(val * 255.0f) << 24;
+	mem = ((uint32_t)(val * 255.0f)) << 24;
 }
 
 }; //namespace fr

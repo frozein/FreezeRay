@@ -28,4 +28,7 @@ ExampleScene example_material_demo(const std::string& envMap);
 //sponza palace scene
 ExampleScene example_sponza();
 
+//san miguel palace scene
+ExampleScene example_san_miguel();
+
 #endif //#ifndef EXAMPLE_SCENE_H
