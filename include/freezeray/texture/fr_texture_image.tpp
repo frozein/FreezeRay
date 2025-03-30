@@ -9,8 +9,8 @@
 namespace fr
 {
 
-template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::TextureImage(Image<Tmemory> image, TextureRepeatMode repeatMode, T multiplier) : 
+template<typename T, typename Tmemory, typename Tprocessing>
+TextureImage<T, Tmemory, Tprocessing>::TextureImage(Image<Tmemory> image, TextureRepeatMode repeatMode, T multiplier) : 
 	m_repeatMode(repeatMode), m_multiplier(multiplier)
 {
 	//validate input:
@@ -61,9 +61,9 @@ TextureImage<T, Tmemory>::TextureImage(Image<Tmemory> image, TextureRepeatMode r
 		for(int32_t y = 0; y < (int32_t)levelHeight; y++)
 		for(int32_t x = 0; x < (int32_t)levelWidth; x++)
 		{
-			T sample = (
-				get_texel(i - 1, 2 * x, 2 * y    ) + get_texel(i - 1, 2 * x + 1, 2 * y    ) +
-				get_texel(i - 1, 2 * x, 2 * y + 1) + get_texel(i - 1, 2 * x + 1, 2 * y + 1)
+			Tprocessing sample = (
+				get_texel_processing(i - 1, 2 * x, 2 * y    ) + get_texel_processing(i - 1, 2 * x + 1, 2 * y    ) +
+				get_texel_processing(i - 1, 2 * x, 2 * y + 1) + get_texel_processing(i - 1, 2 * x + 1, 2 * y + 1)
 			) / 4.0f;
 
 			convert_to_texture_memory(sample, levelImage[x + levelWidth * y]);
@@ -74,15 +74,15 @@ TextureImage<T, Tmemory>::TextureImage(Image<Tmemory> image, TextureRepeatMode r
 	}
 }
 
-template<typename T, typename Tmemory>
-TextureImage<T, Tmemory>::TextureImage(const std::vector<Image<Tmemory>>& mipPyramid, TextureRepeatMode repeatMode, T multiplier) :
+template<typename T, typename Tmemory, typename Tprocessing>
+TextureImage<T, Tmemory, Tprocessing>::TextureImage(const std::vector<Image<Tmemory>>& mipPyramid, TextureRepeatMode repeatMode, T multiplier) :
 	m_mipPyramid(mipPyramid), m_repeatMode(repeatMode), m_multiplier(multiplier)
 {
 	
 }
 
-template<typename T, typename Tmemory>
-T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
+template<typename T, typename Tmemory, typename Tprocessing>
+T TextureImage<T, Tmemory, Tprocessing>::evaluate(const IntersectionInfo& hitInfo) const
 {
 	//TODO: anisotropic sampling
 
@@ -109,8 +109,8 @@ T TextureImage<T, Tmemory>::evaluate(const IntersectionInfo& hitInfo) const
 	return sampled * m_multiplier;
 }
 
-template<typename T, typename Tmemory>
-std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode, T multiplier)
+template<typename T, typename Tmemory, typename Tprocessing>
+std::shared_ptr<TextureImage<T, Tmemory, Tprocessing>> TextureImage<T, Tmemory, Tprocessing>::from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode, T multiplier)
 {
 	static_assert(sizeof(Tmemory) <= 4, "cannot load an image with >4 components");
 
@@ -165,25 +165,25 @@ std::shared_ptr<TextureImage<T, Tmemory>> TextureImage<T, Tmemory>::from_file(co
 
 	//return:
 	//---------------
-	return std::make_shared<TextureImage<T, Tmemory>>(image, repeatMode, multiplier);
+	return std::make_shared<TextureImage<T, Tmemory, Tprocessing>>(image, repeatMode, multiplier);
 }
 
-template<typename T, typename Tmemory>
-const std::vector<Image<Tmemory>>& TextureImage<T, Tmemory>::get_mip_pyramid()
+template<typename T, typename Tmemory, typename Tprocessing>
+const std::vector<Image<Tmemory>>& TextureImage<T, Tmemory, Tprocessing>::get_mip_pyramid()
 {
 	return m_mipPyramid;
 }
 
-template<typename T, typename Tmemory>
-TextureRepeatMode TextureImage<T, Tmemory>::get_repeat_mode()
+template<typename T, typename Tmemory, typename Tprocessing>
+TextureRepeatMode TextureImage<T, Tmemory, Tprocessing>::get_repeat_mode()
 {
 	return m_repeatMode;
 }
 
 //-------------------------------------------//
 
-template<typename T, typename Tmemory>
-inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, int32_t u, int32_t v) const
+template<typename T, typename Tmemory, typename Tprocessing>
+inline T TextureImage<T, Tmemory, Tprocessing>::get_texel(uint32_t level, int32_t u, int32_t v) const
 {
 	const Image<Tmemory>& image = m_mipPyramid[level];
 
@@ -207,8 +207,19 @@ inline T TextureImage<T, Tmemory>::get_texel(uint32_t level, int32_t u, int32_t 
 	return sample;
 }
 
-template<typename T, typename Tmemory>
-inline T TextureImage<T, Tmemory>::bilinear(uint32_t level, const vec2& uv) const
+template<typename T, typename Tmemory, typename Tprocessing>
+inline Tprocessing TextureImage<T, Tmemory, Tprocessing>::get_texel_processing(uint32_t level, int32_t u, int32_t v) const
+{
+	const Image<Tmemory>& image = m_mipPyramid[level];
+
+	Tprocessing sample;
+	convert_from_texture_memory(image.buf[u + image.width * v], sample);
+
+	return sample;
+}
+
+template<typename T, typename Tmemory, typename Tprocessing>
+inline T TextureImage<T, Tmemory, Tprocessing>::bilinear(uint32_t level, const vec2& uv) const
 {
 	float u = uv.x * m_mipPyramid[level].width  - 0.5f;
 	float v = uv.y * m_mipPyramid[level].height - 0.5f;
@@ -225,8 +236,8 @@ inline T TextureImage<T, Tmemory>::bilinear(uint32_t level, const vec2& uv) cons
 
 //-------------------------------------------//
 
-template<typename T, typename Tmemory>
-Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> image, TextureRepeatMode repeatMode)
+template<typename T, typename Tmemory, typename Tprocessing>
+Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image<Tmemory> image, TextureRepeatMode repeatMode)
 {
 	//compute power-of-2 dims:
 	//---------------
@@ -248,7 +259,7 @@ Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> ima
 	for(uint32_t y = 0; y < image.height; y++)
 	for(uint32_t x = 0; x < newWidth; x++)
 	{
-		T val(0.0f);
+		Tprocessing val(0.0f);
 
 		for(uint32_t i = 0; i < 4; i++)
 		{
@@ -264,7 +275,7 @@ Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> ima
 			}
 
 			uint32_t sampleIdx = sampleX + image.width * y;
-			T sample;
+			Tprocessing sample;
 			convert_from_texture_memory(image.buf[sampleIdx], sample);
 
 			val = val + weightsX[x * 4 + i] * sample;
@@ -286,7 +297,7 @@ Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> ima
 	for(uint32_t x = 0; x < newWidth; x++)
 	for(uint32_t y = 0; y < newHeight; y++)
 	{
-		T val(0.0f);
+		Tprocessing val(0.0f);
 
 		for(uint32_t i = 0; i < 4; i++)
 		{
@@ -302,10 +313,10 @@ Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> ima
 			}
 
 			uint32_t sampleIdx = x + newWidth * sampleY;
-			T sample;
+			Tprocessing sample;
 			convert_from_texture_memory(resampledX[sampleIdx], sample);
 
-			val = val + T(weightsY[y * 4 + i]) * sample;
+			val = val + Tprocessing(weightsY[y * 4 + i]) * sample;
 		}
 
 		uint32_t idx = x + newWidth * y;
@@ -319,8 +330,8 @@ Image<Tmemory> TextureImage<T, Tmemory>::resize_to_power_of_2(Image<Tmemory> ima
 	return { newWidth, newHeight, resampledY };
 }
 
-template<typename T, typename Tmemory>
-std::pair<std::unique_ptr<int32_t[]>, std::unique_ptr<float[]>> TextureImage<T, Tmemory>::compute_resampling_weights(uint32_t oldSize, uint32_t newSize)
+template<typename T, typename Tmemory, typename Tprocessing>
+std::pair<std::unique_ptr<int32_t[]>, std::unique_ptr<float[]>> TextureImage<T, Tmemory, Tprocessing>::compute_resampling_weights(uint32_t oldSize, uint32_t newSize)
 {
 	std::unique_ptr<int32_t[]> firstTexels = std::unique_ptr<int32_t[]>(new int32_t[newSize]);
 	std::unique_ptr<float[]> weights = std::unique_ptr<float[]>(new float[newSize * 4]);
@@ -347,8 +358,8 @@ std::pair<std::unique_ptr<int32_t[]>, std::unique_ptr<float[]>> TextureImage<T, 
 	return { std::move(firstTexels), std::move(weights) };
 }
 
-template<typename T, typename Tmemory>
-float TextureImage<T, Tmemory>::lanczos_filter(float x)
+template<typename T, typename Tmemory, typename Tprocessing>
+float TextureImage<T, Tmemory, Tprocessing>::lanczos_filter(float x)
 {
     x = std::abs(x);
     if (x < FR_EPSILON) 
@@ -361,6 +372,26 @@ float TextureImage<T, Tmemory>::lanczos_filter(float x)
 }
 
 //-------------------------------------------//
+
+inline void convert_from_texture_memory(uint32_t mem, vec4& val)
+{
+	val = vec4(
+		(mem & 0xFF) / 255.0f,
+		((mem >>  8) & 0xFF) / 255.0f,
+		((mem >> 16) & 0xFF) / 255.0f,
+		((mem >> 24) & 0xFF) / 255.0f
+	);
+}
+
+inline void convert_to_texture_memory(vec4 val, uint32_t& mem)
+{
+	uint32_t r = (uint32_t)(val.r * 255.0f);
+	uint32_t g = (uint32_t)(val.g * 255.0f);
+	uint32_t b = (uint32_t)(val.b * 255.0f);
+	uint32_t a = (uint32_t)(val.a * 255.0f);
+
+	mem = r | (g << 8) | (b << 16) | (a << 24);
+}
 
 inline void convert_from_texture_memory(uint32_t mem, vec3& val)
 {

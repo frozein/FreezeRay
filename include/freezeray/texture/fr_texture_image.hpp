@@ -21,7 +21,7 @@ struct Image
 	std::shared_ptr<const T[]> buf;	
 };
 
-template<typename T, typename Tmemory>
+template<typename T, typename Tmemory, typename Tprocessing = T>
 class TextureImage : public Texture<T>
 {
 public:
@@ -30,7 +30,7 @@ public:
 
 	T evaluate(const IntersectionInfo& hitInfo) const override;
 
-	static std::shared_ptr<TextureImage<T, Tmemory>> from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode, T multiplier = 1.0);
+	static std::shared_ptr<TextureImage<T, Tmemory, Tprocessing>> from_file(const std::string& path, bool hdr, TextureRepeatMode repeatMode, T multiplier = 1.0);
 
 	const std::vector<Image<Tmemory>>& get_mip_pyramid();
 	TextureRepeatMode get_repeat_mode();
@@ -43,6 +43,7 @@ private:
 	//-------------------------------------------//
 
 	inline T get_texel(uint32_t level, int32_t u, int32_t v) const;
+	inline Tprocessing get_texel_processing(uint32_t level, int32_t u, int32_t v) const;
 	inline T bilinear(uint32_t level, const vec2& uv) const;
 
 	static Image<Tmemory> resize_to_power_of_2(Image<Tmemory> image, TextureRepeatMode repeatMode);
@@ -51,6 +52,9 @@ private:
 };
 
 //-------------------------------------------//
+
+inline void convert_from_texture_memory(uint32_t mem, vec4& val);
+inline void convert_to_texture_memory(vec4 val, uint32_t& mem);
 
 inline void convert_from_texture_memory(uint32_t mem, vec3& val);
 inline void convert_to_texture_memory(vec3 val, uint32_t& mem);

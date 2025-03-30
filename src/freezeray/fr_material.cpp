@@ -70,6 +70,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 
 		//create textures:
 		vec3 diffuseColor = vec3(material.diffuseColor.r, material.diffuseColor.g, material.diffuseColor.b);
+		diffuseColor = srgb_to_linear(diffuseColor);
 		if(material.diffuseMapPath)
 		{
 			//check if diffuse texture has alpha
@@ -82,7 +83,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 				diffuseHasAlpha = true;
 
 			//create texture
-			diffuseColorTex = TextureImage<vec3, uint32_t>::from_file(
+			diffuseColorTex = TextureImage<vec3, uint32_t, vec4>::from_file(
 				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, diffuseColor
 			);
 		}
@@ -90,6 +91,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			diffuseColorTex = std::make_shared<TextureConstant<vec3>>(diffuseColor);
 
 		vec3 specularColor = vec3(material.specularColor.r, material.specularColor.g, material.specularColor.b);
+		specularColor = srgb_to_linear(specularColor);
 		if(material.specularMapPath)
 			specularColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.specularMapPath, false, TextureRepeatMode::REPEAT, specularColor
@@ -98,6 +100,7 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			specularColorTex = std::make_shared<TextureConstant<vec3>>(specularColor);
 
 		vec3 transmittanceColor = vec3(material.transmittanceColor.r, material.transmittanceColor.g, material.transmittanceColor.b);
+		transmittanceColor = srgb_to_linear(transmittanceColor);
 		if(material.transmittanceMapPath)
 			transmittanceColorTex = TextureImage<vec3, uint32_t>::from_file(
 				prefix + material.transmittanceMapPath, false, TextureRepeatMode::REPEAT, transmittanceColor
@@ -109,10 +112,15 @@ std::vector<std::shared_ptr<const Material>> Material::from_mtl(const std::strin
 			opacityTex = TextureImage<float, uint8_t>::from_file(
 				prefix + material.opacityMapPath, false, TextureRepeatMode::REPEAT, material.opacity
 			);
-		else if(diffuseHasAlpha) //TODO: fix sharing memory, broken! OR: dont store a full uint32 !!!!
-			opacityTex = TextureImage<float, uint32_t>::from_file(
-				prefix + material.diffuseMapPath, false, TextureRepeatMode::REPEAT, material.opacity
+		else if(diffuseHasAlpha)
+		{
+			std::shared_ptr<TextureImage<vec3, uint32_t, vec4>> diffuseTexImage = 
+				std::dynamic_pointer_cast<TextureImage<vec3, uint32_t, vec4>>(diffuseColorTex);
+
+			opacityTex = std::make_shared<TextureImage<float, uint32_t, vec3>>(
+				diffuseTexImage->get_mip_pyramid(), diffuseTexImage->get_repeat_mode(), material.opacity
 			);
+		}
 		else
 			opacityTex = std::make_shared<TextureConstant<float>>(material.opacity);
 		
