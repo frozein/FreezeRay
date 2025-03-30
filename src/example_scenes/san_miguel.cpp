@@ -27,12 +27,11 @@ ExampleScene example_san_miguel()
 
 	//create lights:
 	//---------------
-	std::shared_ptr<const fr::Light> light1 = 
-		std::make_shared<fr::LightDirectional>(normalize(vec3(0.25f, 1.0f, 0.25f)), vec3(1.0f));
+	std::unique_ptr<fr::Light> light1 = 
+		std::make_unique<fr::LightDirectional>(normalize(vec3(0.25f, 1.0f, 0.25f)), vec3(1.0f));
 		
-	std::vector<std::shared_ptr<const fr::Light>> lightList = {
-		light1
-	};
+	std::vector<std::unique_ptr<fr::Light>> lightList;
+	lightList.push_back(std::move(light1));
 	
 	//define scene:
 	//---------------

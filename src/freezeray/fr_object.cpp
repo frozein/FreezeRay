@@ -70,6 +70,23 @@ bool Object::intersect(const Ray& ray, float& minT, vec2& uv, vec3& normal, Inte
 	return hit;
 }
 
+bound3 Object::get_bounds() const
+{
+	bound3 bounds;
+	bounds.min = vec3( INFINITY);
+	bounds.max = vec3(-INFINITY);
+
+	for(uint32_t i = 0; i < m_components.size(); i++)
+	{
+		bound3 meshBounds = m_components[i].mesh->get_bounds();
+
+		bounds.min = min(bounds.min, meshBounds.min);
+		bounds.max = max(bounds.max, meshBounds.max);
+	}
+
+	return bounds;
+}
+
 std::shared_ptr<const Object> Object::from_obj(const std::string& objPath, const std::string& mtlPath, bool opacityIsMask)
 {
 	std::vector<std::shared_ptr<const Mesh>> meshes = Mesh::from_obj(objPath);

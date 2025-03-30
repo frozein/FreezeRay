@@ -67,8 +67,10 @@ ExampleScene example_material_demo(const std::string& envMap)
 
 	//create lights:
 	//---------------
-	std::shared_ptr<const fr::LightEnvironment> light = std::make_shared<fr::LightEnvironment>(envMap);
-	std::vector<std::shared_ptr<const fr::Light>> lightList = {light};
+	std::unique_ptr<fr::LightEnvironment> light = std::make_unique<fr::LightEnvironment>(envMap);
+	
+	std::vector<std::unique_ptr<fr::Light>> lightList;
+	lightList.push_back(std::move(light));
 
 	//define scene:
 	//---------------

@@ -3,14 +3,15 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "freezeray/fr_globals.hpp"
 #include "freezeray/texture/stb_image.h"
+#include "freezeray/fr_scene.hpp"
 
 //-------------------------------------------//
 
 namespace fr
 {
 
-LightEnvironment::LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t width, uint32_t height, float worldRadius) :
-	Light(false, true), m_image(image), m_width(width), m_height(height), m_worldRadius(worldRadius)
+LightEnvironment::LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t width, uint32_t height) :
+	Light(false, true), m_image(image), m_width(width), m_height(height), m_worldRadius(1.0f)
 {
 	//validate:
 	//---------------
@@ -25,8 +26,8 @@ LightEnvironment::LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t
 	create_texel_distribution();
 }
 
-LightEnvironment::LightEnvironment(const std::string& path, float worldRadius) :
-	Light(false, true), m_worldRadius(worldRadius)
+LightEnvironment::LightEnvironment(const std::string& path) :
+	Light(false, true), m_worldRadius(1.0f)
 {
 	//load image:
 	//---------------
@@ -116,6 +117,51 @@ vec3 LightEnvironment::le(const IntersectionInfo& hitInfo, const vec3& w) const
 	return bilinear(vec2(u * FR_INV_2_PI, v * FR_INV_PI));
 }
 
+vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3& normal, float& pdfPos, float& pdfDir) const
+{
+	//sample texel:
+	//---------------
+	TexelCoordinate texel;
+	vec2 uv = sample_texel_area(u1, texel, pdfDir);
+	vec3 le = get_texel(texel.u, texel.v);
+
+	//uv -> spherical:
+	//---------------
+	float theta = uv.x * FR_2_PI;
+	float phi = uv.y * FR_PI;
+	float cosTheta = std::cos(theta);
+	float sinTheta = std::sin(theta);
+	float sinPhi = std::sin(phi);
+	float cosPhi = std::cos(phi);
+
+	vec3 dir = vec3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
+	
+	//sample point on disk:
+	//---------------
+    float diskR = std::sqrt(u1.x);
+    float diskTheta = FR_2_PI * u1.y;
+    vec2 diskPos = vec2(diskR * std::cos(diskTheta), diskR * std::sin(diskTheta));
+
+	vec3 v1, v2;
+	get_orthogonal(dir, v1, v2);
+
+	vec3 pos = m_worldRadius * (diskPos.x * v1 + diskPos.y * v2);
+
+	//return:
+	//---------------
+	ray = Ray(pos + m_worldRadius * dir, -1.0f * dir);
+	normal = -1.0f * dir;
+	pdfPos = 1.0f / (FR_PI * m_worldRadius * m_worldRadius);
+	pdfDir /= (2.0f * FR_PI * FR_PI * sinPhi);
+	
+	return le;
+}
+
+void LightEnvironment::pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const
+{
+
+}
+
 //-------------------------------------------//
 
 vec3 LightEnvironment::get_texel(uint32_t u, uint32_t v) const
@@ -186,6 +232,11 @@ void LightEnvironment::create_texel_distribution()
 	m_texelDistribution = std::make_unique<DistributionDiscrete<TexelCoordinate>>(pmf, m_luminance);
 
 	m_power = m_power / m_area;
+}
+
+void LightEnvironment::preprocess(std::shared_ptr<const Scene> scene)
+{
+	m_worldRadius = scene->get_world_radius();
 }
 
 }; //namespace fr

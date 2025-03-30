@@ -27,8 +27,11 @@ public:
 	virtual float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
 	virtual vec3 power() const override;
 
-	virtual std::shared_ptr<const Mesh> get_mesh(mat4& transform) const override;
 	virtual vec3 le(const IntersectionInfo& hitInfo, const vec3& w) const override;
+	virtual vec3 sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3& normal, float& pdfPos, float& pdfDir) const override;
+	virtual void pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const override;
+
+	virtual std::shared_ptr<const Mesh> get_mesh(mat4& transform) const override;
 
 private:
 	std::shared_ptr<const Mesh> m_mesh;
@@ -38,7 +41,7 @@ private:
 	float m_area;
 	std::unique_ptr<DistributionDiscrete<uint32_t>> m_triDistribution;
 
-	vec3 sample_mesh_area(const vec3& u, float& pdf) const;
+	vec3 sample_mesh_area(const vec3& u, float& pdf, vec3& normal) const;
 };
 
 }; //namespace fr

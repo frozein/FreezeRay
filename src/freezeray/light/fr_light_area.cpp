@@ -46,7 +46,8 @@ LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transf
 
 vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const
 {
-	vec3 pos = sample_mesh_area(u, pdf);
+	vec3 normal;
+	vec3 pos = sample_mesh_area(u, pdf, normal);
 	vec3 toLight = pos - hitInfo.worldPos;
 
 	wiWorld = normalize(toLight);
@@ -67,6 +68,44 @@ vec3 LightArea::le(const IntersectionInfo& hitInfo, const vec3& w) const
 	return m_intensity;
 }
 
+vec3 LightArea::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3& normal, float& pdfPos, float& pdfDir) const
+{
+	//sample position:
+	//---------------
+	vec3 objNormal;
+	vec3 pos = sample_mesh_area(u1, pdfPos, objNormal);
+
+	objNormal = normalize(objNormal);
+	normal = (m_transform * vec4(objNormal, 0.0f)).xyz();
+
+	//sample direction:
+	//---------------
+	float r = std::sqrtf(u2.x);
+	float theta = FR_2_PI * u2.y;
+
+	vec2 xz = vec2(r * std::cos(theta), r * std::sin(theta));
+	float y = std::sqrtf(1.0f - xz.x * xz.x - xz.y * xz.y);
+	vec3 dir = vec3(xz.x, y, xz.y);
+
+	vec3 v1, v2;
+	get_orthogonal(normal, v1, v2);
+	dir = v1 * dir.x + normal * dir.y + v2 * dir.z;
+
+	pdfDir = std::abs(dot(normal, dir)) * FR_INV_PI;
+
+	//return:
+	//---------------
+	ray = Ray(pos, dir);
+
+	return m_intensity;
+}
+
+void LightArea::pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const
+{
+	pdfPos = 1.0f / m_area;
+	pdfDir = std::abs(dot(ray.direction(), normal)) * FR_INV_PI;
+}
+
 vec3 LightArea::power() const
 {
 	return m_intensity * m_area * FR_2_PI;
@@ -78,7 +117,7 @@ std::shared_ptr<const Mesh> LightArea::get_mesh(mat4& transform) const
 	return m_mesh;
 }
 
-vec3 LightArea::sample_mesh_area(const vec3& u, float& pdf) const
+vec3 LightArea::sample_mesh_area(const vec3& u, float& pdf, vec3& objNormal) const
 {
 	//get triangle:
 	//---------------
@@ -107,7 +146,9 @@ vec3 LightArea::sample_mesh_area(const vec3& u, float& pdf) const
 
 	//update pdf to account for tri area, return:
 	//---------------
-	float triArea = length(cross(v1 - v0, v2 - v0)) * 0.5f;
+	objNormal = cross(v1 - v0, v2 - v0);
+
+	float triArea = length(objNormal) * 0.5f;
 	pdf /= triArea;
 
     return b0 * v0 + b1 * v1 + b2 * v2;

@@ -29,12 +29,15 @@ struct ObjectReference
 class Scene
 {
 public:
-	Scene(const std::vector<ObjectReference>& objects, const std::vector<std::shared_ptr<const Light>>& lights);
+	Scene(const std::vector<ObjectReference>& objects, std::vector<std::unique_ptr<Light>>& lights);
 
 	bool intersect(const Ray& ray, IntersectionInfo& info) const;
 
 	const std::vector<std::shared_ptr<const Light>>& get_lights() const;
 	const std::vector<std::shared_ptr<const Light>>& get_infinite_lights() const;
+
+	bound3 get_world_bounds() const;
+	float get_world_radius() const;
 
 private:
 	struct ObjectReferenceFull
@@ -52,7 +55,11 @@ private:
 	std::vector<std::shared_ptr<const Light>> m_lights;
 	std::vector<std::shared_ptr<const Light>> m_infiniteLights;
 
+	bound3 m_worldBounds;
+
 	void add_object_reference(const std::shared_ptr<const Object>& object, const std::shared_ptr<const Light>& light, const mat4& transform);
+	
+	static bound3 transform_bounds(const bound3& bounds, const mat4& transform);
 };
 
 }; //namespace fr

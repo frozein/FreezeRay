@@ -91,9 +91,19 @@ void Mesh::set_material(const std::string& material)
 	m_material = material;
 }
 
+uint32_t Mesh::get_attribs() const
+{
+	return m_vertAttribs;
+}
+
 uint32_t Mesh::get_num_tris() const
 {
 	return m_numTris;
+}
+
+bound3 Mesh::get_bounds() const
+{
+	return m_kdTreeBounds;
 }
 
 void Mesh::get_tri_indices(uint32_t triIdx, uint32_t& idx0, uint32_t& idx1, uint32_t& idx2) const

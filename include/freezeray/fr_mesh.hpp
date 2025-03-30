@@ -42,7 +42,10 @@ public:
 	const std::string& get_material() const;
 	void set_material(const std::string& material);
 
+	uint32_t get_attribs() const;
 	uint32_t get_num_tris() const;
+	bound3 get_bounds() const;
+
 	void get_tri_indices(uint32_t triIdx, uint32_t& idx0, uint32_t& idx1, uint32_t& idx2) const;
 	vec3 get_vert_pos_at(uint32_t idx) const;
 	vec2 get_vert_uv_at(uint32_t idx) const;

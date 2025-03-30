@@ -100,6 +100,16 @@ inline bool same_hemisphere(const vec3& w1, const vec3& w2)
 	return w1.y * w2.y > 0.0f;
 }
 
+inline void get_orthogonal(const vec3& v1, vec3& v2, vec3& v3)
+{
+	if(std::abs(v1.x) > std::abs(v1.y))
+		v2 = vec3(-v1.z, 0, v1.x) / std::sqrt(v1.x * v1.x + v1.z * v1.z);
+	else
+		v2 = vec3(0, v1.z, -v1.y) / std::sqrt(v1.y * v1.y + v1.z * v1.z);
+	
+	v3 = cross(v1, v2);
+}
+
 //COLOR HELPERS:
 //-------------------------------------------//
 

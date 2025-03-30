@@ -22,6 +22,9 @@ public:
 	float pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const override;
 	vec3 power() const override;
 
+	vec3 sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3& normal, float& pdfPos, float& pdfDir) const override;
+	void pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const override;
+
 private:
 	vec3 m_pos;
 	vec3 m_intensity;
