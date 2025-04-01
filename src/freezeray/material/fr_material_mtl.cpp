@@ -53,7 +53,7 @@ std::shared_ptr<BSDF> MaterialMTL::get_bsdf(const IntersectionInfo& hitInfo) con
 
 	//create bsdf:
 	//---------------
-	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.shadingNormal);
 
 	if(colorDiffuse != 0.0f)
 		bsdf->add_bxdf(

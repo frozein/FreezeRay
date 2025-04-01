@@ -39,7 +39,6 @@ public:
 	BXDFflags get_flags() const { return m_flags; }
 
 private:
-	bool m_delta;
 	BXDFflags m_flags;
 };
 

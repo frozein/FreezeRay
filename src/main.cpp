@@ -3,6 +3,7 @@
 
 #include "example_scene.hpp"
 #include "freezeray/renderer/fr_renderer_path.hpp"
+#include "freezeray/renderer/fr_renderer_bidirectional.hpp"
 
 #define WINDOW_W 1920
 #define WINDOW_H 1080
@@ -49,12 +50,12 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		1,
+		1000,
 		true,
 		true
 	);

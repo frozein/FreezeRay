@@ -23,7 +23,7 @@ std::shared_ptr<BSDF> MaterialSpecularGlass::get_bsdf(const IntersectionInfo& hi
 
 	//create bsdf:
 	//---------------
-	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.shadingNormal);
 
 	bsdf->add_bxdf(
 		std::make_shared<BRDFSpecular>(fresnel), 

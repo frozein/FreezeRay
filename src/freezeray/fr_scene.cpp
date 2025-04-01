@@ -16,7 +16,7 @@ public:
 
 	std::shared_ptr<BSDF> get_bsdf(const IntersectionInfo& hitInfo) const
 	{
-		return std::make_shared<BSDF>(hitInfo.worldNormal);
+		return std::make_shared<BSDF>(hitInfo.shadingNormal);
 	}
 };
 
@@ -76,12 +76,10 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 {
 	float minT = INFINITY;
 
-	vec3 minWorldHitPos;
-	vec3 minObjectHitPos;
-
+	
+	vec3 minHitPos;
+	vec3 minNormal;
 	vec2 minUV;
-	vec3 minWorldNormal;
-	vec3 minObjectNormal;
 	IntersectionInfo::Derivatives minDerivs;
 	std::shared_ptr<const Material> minMaterial;
 	std::shared_ptr<const Light> minLight;
@@ -109,12 +107,10 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 			{
 				minT = t;
 
-				minWorldHitPos = worldHitPos;
-				minObjectHitPos = objectHitPos;
+				minHitPos = worldHitPos;
+				minNormal = (m_objects[i].transformNoTranslate * vec4(objectNormal, 1.0)).xyz();
 
 				minUV = uv;
-				minWorldNormal = (m_objects[i].transformNoTranslate * vec4(objectNormal, 1.0)).xyz();
-				minObjectNormal = objectNormal;
 				minDerivs = derivs;
 				minMaterial = material;
 				minLight = m_objects[i].light;
@@ -122,30 +118,34 @@ bool Scene::intersect(const Ray& worldRay, IntersectionInfo& hitInfo) const
 		}
 	}
 
+	hitInfo.wo = -1.0f * worldRay.direction();
+	hitInfo.bsdf = nullptr;
+	hitInfo.camera = nullptr;
+
 	if(hit)
 	{
-		hitInfo.bsdf = nullptr;
 		hitInfo.light = minLight;
-		hitInfo.worldPos = minWorldHitPos;
-		hitInfo.objectPos = minObjectHitPos;
-		hitInfo.worldNormal = normalize(minWorldNormal);
-		hitInfo.objectNormal = normalize(minObjectNormal);
+
+		hitInfo.pos = minHitPos;
+
+		hitInfo.shadingNormal = normalize(minNormal);
 		hitInfo.uv = minUV;
+
+		hitInfo.derivatives = minDerivs;
 
 		hitInfo.bsdf = minMaterial->get_bsdf(hitInfo);
 	}
 	else
 	{
-		hitInfo.bsdf = nullptr;
 		hitInfo.light = nullptr;
-		hitInfo.worldPos = vec3(0.0f);
-		hitInfo.objectPos = vec3(0.0f);
-		hitInfo.worldNormal = vec3(0.0f);
-		hitInfo.objectNormal = vec3(0.0f);
-		hitInfo.uv = vec2(0.0f);
-	}
 
-	hitInfo.derivatives = minDerivs;
+		hitInfo.pos = worldRay.direction() * 2.0f * get_world_radius();
+		
+		hitInfo.shadingNormal = vec3(0.0f);
+		hitInfo.uv = vec2(0.0f);
+
+		hitInfo.derivatives = {};
+	}
 
 	return hit;
 }

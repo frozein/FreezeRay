@@ -228,11 +228,11 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const
 
 	//compute bsdf f:
 	//---------------
-	vec3 f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.worldNormal));
+	vec3 f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.shadingNormal));
 
 	//trace visibility ray, return:
 	//---------------
-	if(trace_visibility_ray(scene, hitInfo, wi, wo, visInfo))
+	if(trace_visibility_ray(scene, hitInfo, wi, visInfo))
 		return f * li / pdf;
 	else
 		return vec3(0.0f);
@@ -267,10 +267,10 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	vec3 uLight = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 	li = light->sample_li(hitInfo, uLight, wi, visInfo, pdfLight);
 
-	f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.worldNormal));
+	f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.shadingNormal));
 	pdfScattering = hitInfo.bsdf->pdf(wi, wo, ~BXDFflags::DELTA);
 
-	if(!trace_visibility_ray(scene, hitInfo, wi, wo, visInfo))
+	if(!trace_visibility_ray(scene, hitInfo, wi, visInfo))
 		li = vec3(0.0f);
 
 	if(pdfLight > 0.0f && pdfScattering > 0.0f)
@@ -293,7 +293,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 
 		vec3 uBsdf = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
 		f = hitInfo.bsdf->sample_f(wi, wo, uBsdf, pdfScattering, ~BXDFflags::DELTA, sampledFlags);
-		f = f * std::abs(dot(wi, hitInfo.worldNormal));
+		f = f * std::abs(dot(wi, hitInfo.shadingNormal));
 
 		//get light pdf
 		pdfLight = light->pdf_li(hitInfo, wi);
@@ -304,11 +304,11 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 			float weight = mis_power_heuristic(1, pdfScattering, 1, pdfLight);
 
 			//trace ray, get light contrib
-			vec3 rayPos = hitInfo.worldPos;
-			if(dot(wi, hitInfo.worldNormal) > 0.0f)
-				rayPos = rayPos + hitInfo.worldNormal * FR_EPSILON;
+			vec3 rayPos = hitInfo.pos;
+			if(dot(wi, hitInfo.shadingNormal) > 0.0f)
+				rayPos = rayPos + hitInfo.shadingNormal * FR_EPSILON;
 			else
-				rayPos = rayPos - hitInfo.worldNormal * FR_EPSILON;
+				rayPos = rayPos - hitInfo.shadingNormal * FR_EPSILON;
 
 			Ray ray(rayPos, wi);
 			IntersectionInfo hitInfoBsdf;
@@ -338,16 +338,16 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	return ld / pdfLightSample;
 }
 
-bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const vec3& wo, const VisibilityTestInfo& visInfo) const
+bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const VisibilityTestInfo& visInfo) const
 {
-	vec3 rayPos = initialHitInfo.worldPos;
+	vec3 rayPos = initialHitInfo.pos;
 	rayPos = rayPos + FR_EPSILON * normalize(wi);
 
 	vec3 rayDir;
 	if(visInfo.infinite)
 		rayDir = wi;
 	else
-		rayDir = visInfo.endPos - initialHitInfo.worldPos;
+		rayDir = visInfo.endPos - initialHitInfo.pos;
 
 	Ray ray(rayPos, rayDir);
 	IntersectionInfo hitInfo;
@@ -360,8 +360,8 @@ bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, c
 		if(!hit)
 			return true;
 
-		float minDist = distance(initialHitInfo.worldPos, visInfo.endPos);
-		float dist = distance(initialHitInfo.worldPos, hitInfo.worldPos);
+		float minDist = distance(initialHitInfo.pos, visInfo.endPos);
+		float dist = distance(initialHitInfo.pos, hitInfo.pos);
 
 		return (dist + FR_EPSILON) > minDist;
 	}

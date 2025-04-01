@@ -138,6 +138,15 @@ BXDFflags BSDF::get_flags() const
 	return flags;
 }
 
+bool BSDF::is_delta() const
+{
+	for(uint32_t i = 0; i < m_numBxdfs; i++)
+		if((m_bxdfs[i]->get_flags() & BXDFflags::DELTA) == BXDFflags::NONE)
+			return false;
+
+	return true;
+}
+
 //-------------------------------------------//
 
 void BSDF::add_bxdf(std::shared_ptr<const BXDF> bxdf, vec3 color)

@@ -76,11 +76,8 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		if(!hit)
 			break;
 
-		//get bsdf flags
-		BXDFflags bsdfFlags = hitInfo.bsdf->get_flags();
-		
 		//add contribution from light sources
-		if((bsdfFlags & BXDFflags::DELTA) == BXDFflags::NONE)
+		if(!hitInfo.bsdf->is_delta())
 		{
 			if(m_mis)
 				light = light + mult * sample_one_light_mis(scene, hitInfo, wo);
@@ -89,6 +86,8 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		}
 
 		//evaluate bsdf:
+		BXDFflags bsdfFlags = hitInfo.bsdf->get_flags();
+
 		vec3 f;
 		float pdf;
 		vec3 wi;
@@ -109,12 +108,12 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 			}
 			else if((bsdfFlags & BXDFflags::REFLECTION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(hitInfo.worldNormal);
+				wi = random_dir_hemisphere(hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else if((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(-1.0f * hitInfo.worldNormal);
+				wi = random_dir_hemisphere(-1.0f * hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else
@@ -134,12 +133,12 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 			break;
 
 		//apply brdf to current color
-		float cosTheta = std::abs(dot(wi, hitInfo.worldNormal));
+		float cosTheta = std::abs(dot(wi, hitInfo.shadingNormal));
 		mult = mult * (f * cosTheta / pdf);
 
 		//set new ray
 		vec3 bounceDir = wi;
-		vec3 bouncePos = hitInfo.worldPos + FR_EPSILON * normalize(wi);
+		vec3 bouncePos = hitInfo.pos + FR_EPSILON * normalize(wi);
 
 		curRay = Ray(bouncePos, bounceDir);
 		deltaBounce = (sampledFlags & BXDFflags::DELTA) != BXDFflags::NONE;

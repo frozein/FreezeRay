@@ -48,10 +48,10 @@ vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& 
 {
 	vec3 normal;
 	vec3 pos = sample_mesh_area(u, pdf, normal);
-	vec3 toLight = pos - hitInfo.worldPos;
+	vec3 toLight = pos - hitInfo.pos;
 
 	wiWorld = normalize(toLight);
-	pdf *= dot(toLight, toLight) / std::abs(dot(-1.0f * wiWorld, hitInfo.worldNormal));
+	pdf *= dot(toLight, toLight) / std::abs(dot(-1.0f * wiWorld, hitInfo.shadingNormal));
 	vis.infinite = false;
 	vis.endPos = pos;
 

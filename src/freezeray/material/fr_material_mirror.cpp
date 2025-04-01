@@ -20,7 +20,7 @@ std::shared_ptr<BSDF> MaterialMirror::get_bsdf(const IntersectionInfo& hitInfo) 
 
 	//create BSDF:
 	//---------------
-	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.shadingNormal);
 
 	bsdf->add_bxdf(
 		std::make_shared<BRDFSpecular>(fresnel), 

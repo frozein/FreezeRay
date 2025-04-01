@@ -13,7 +13,7 @@ MaterialSingleBXDF::MaterialSingleBXDF(const std::string& name, std::shared_ptr<
 
 std::shared_ptr<BSDF> MaterialSingleBXDF::get_bsdf(const IntersectionInfo& hitInfo) const
 {
-	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.shadingNormal);
 
 	bsdf->add_bxdf(
 		m_bxdf,

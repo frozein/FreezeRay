@@ -17,18 +17,18 @@ namespace fr
 
 class BSDF;
 class Light;
+class Camera;
 
 struct IntersectionInfo
 {
 	std::shared_ptr<const BSDF> bsdf;
 	std::shared_ptr<const Light> light;
+	std::shared_ptr<const Camera> camera; //only used for bidirectional pt
 
-	vec3 worldPos;
-	vec3 objectPos;
-
-	vec3 worldNormal;
-	vec3 objectNormal;
+	vec3 wo;
+	vec3 pos;
 	
+	vec3 shadingNormal;
 	vec2 uv;
 
 	struct Derivatives

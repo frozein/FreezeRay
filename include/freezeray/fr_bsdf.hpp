@@ -29,6 +29,7 @@ public:
 	float pdf(const vec3& wiWorld, const vec3& woWorld, BXDFflags flags) const;
 
 	BXDFflags get_flags() const;
+	bool is_delta() const;
 
 	void add_bxdf(std::shared_ptr<const BXDF> bxdf, vec3 color);
 

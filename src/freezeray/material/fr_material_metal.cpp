@@ -65,7 +65,7 @@ std::shared_ptr<BSDF> MaterialMetal::get_bsdf(const IntersectionInfo& hitInfo) c
 
 	//create bsdf:
 	//---------------
-	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.worldNormal);
+	std::shared_ptr<BSDF> bsdf = std::make_shared<BSDF>(hitInfo.shadingNormal);
 
 	bsdf->add_bxdf(
 		std::make_shared<BRDFMicrofacet>(distribution, fresnel),
