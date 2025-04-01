@@ -138,8 +138,8 @@ vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3&
 	
 	//sample point on disk:
 	//---------------
-    float diskR = std::sqrt(u1.x);
-    float diskTheta = FR_2_PI * u1.y;
+    float diskR = std::sqrt(u2.x);
+    float diskTheta = FR_2_PI * u2.y;
     vec2 diskPos = vec2(diskR * std::cos(diskTheta), diskR * std::sin(diskTheta));
 
 	vec3 v1, v2;

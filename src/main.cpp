@@ -50,12 +50,12 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
 		scene.camera, 
 		WINDOW_W, 
 		WINDOW_H, 
 		50,
-		1000,
+		100,
 		true,
 		true
 	);
