@@ -35,8 +35,6 @@ private:
 	uint32_t m_height;
 	std::shared_ptr<const vec3[]> m_image;
 
-	float m_area;
-	float m_luminance;
 	vec3 m_power;
 	float m_worldRadius;
 
@@ -46,6 +44,8 @@ private:
 		uint32_t v;
 	};
 	std::unique_ptr<DistributionDiscrete<TexelCoordinate>> m_texelDistribution;
+	uint32_t m_distWidth;
+	uint32_t m_distHeight;
 
 	vec3 get_texel(uint32_t u, uint32_t v) const;
 	vec3 bilinear(const vec2& uv) const;

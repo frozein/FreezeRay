@@ -41,7 +41,7 @@ LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transf
 		m_area += triArea;
 	}
 
-	m_triDistribution = std::make_unique<DistributionDiscrete<uint32_t>>(pmf, m_area);
+	m_triDistribution = std::make_unique<DistributionDiscrete<uint32_t>>(pmf);
 }
 
 vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& wiWorld, VisibilityTestInfo& vis, float& pdf) const

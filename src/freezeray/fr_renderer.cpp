@@ -27,7 +27,7 @@ struct WorkGroup
 class ThreadPool
 {
 public:
-	ThreadPool(uint64_t numWorkers, const std::queue<WorkGroup>& workGroups, std::function<void(const WorkGroup&)> process) :
+	ThreadPool(uint64_t numWorkers, const std::queue<WorkGroup>& workGroups, std::function<void(const WorkGroup&, const std::shared_ptr<PRNG>& prng)> process) :
 		m_workGroups(workGroups), m_process(process)
 	{
 		m_activeThreads = numWorkers;
@@ -36,6 +36,8 @@ public:
 		{
 			m_workers.emplace_back(
 				[this] {
+					std::shared_ptr<PRNG> prng = std::make_shared<PRNG>();
+
 					while(true)
 					{
 						WorkGroup group;
@@ -53,7 +55,7 @@ public:
 							m_workGroups.pop();
 						}
 
-						m_process(group);
+						m_process(group, prng);
 					}
 				}
 			);
@@ -77,7 +79,7 @@ private:
 
 	std::queue<WorkGroup> m_workGroups;
 	std::mutex m_queueMutex;
-	std::function<void(const WorkGroup&)> m_process;
+	std::function<void(const WorkGroup&, const std::shared_ptr<PRNG>&)> m_process;
 };
 
 //-------------------------------------------//
@@ -135,7 +137,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 
 	std::atomic<uint64_t> threadsRendering = 0;
 
-	auto processWorkgroup = [&](const WorkGroup& group) {
+	auto processWorkgroup = [&](const WorkGroup& group, const std::shared_ptr<PRNG>& prng) {
 		for(int32_t y = group.endY; y >= (int32_t)group.startY; y--)
 		{
 			//wait for main thread to display
@@ -157,7 +159,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 				cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
 	
 				//get color of pixel
-				vec3 color = li(scene, cameraRay);
+				vec3 color = li(prng, scene, cameraRay);
 	
 				//write color to given buffer
 				color.r = std::max(std::min(color.r, 1.0f), 0.0f);
@@ -201,7 +203,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 
 //-------------------------------------------//
 
-vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
+vec3 Renderer::sample_one_light(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
 {
 	//choose random light index:
 	//---------------
@@ -209,11 +211,11 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const
 	if(numLights == 0)
 		return vec3(0.0f);
 
-	uint32_t lightIdx = rand() % numLights;
+	uint32_t lightIdx = prng->randi() % numLights;
 
 	//sample li:
 	//---------------
-	vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	vec3 u = prng->rand3f();
 	vec3 wi;
 	VisibilityTestInfo visInfo;
 	float pdf;
@@ -232,13 +234,13 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<const Scene>& scene, const
 
 	//trace visibility ray, return:
 	//---------------
-	if(trace_visibility_ray(scene, hitInfo, wi, visInfo))
+	if(f != vec3(0.0f) && trace_visibility_ray(scene, hitInfo, wi, visInfo))
 		return f * li / pdf;
 	else
 		return vec3(0.0f);
 }
 
-vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
+vec3 Renderer::sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const
 {
 	//choose random light index:
 	//---------------
@@ -246,7 +248,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	if(numLights == 0)
 		return vec3(0.0f);
 
-	uint32_t lightIdx = rand() % numLights;
+	uint32_t lightIdx = prng->randi() % numLights;
 	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
 
 	float pdfLightSample = 1.0f / (float)numLights;
@@ -264,7 +266,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 	//sample from light:
 	//---------------
 	VisibilityTestInfo visInfo;
-	vec3 uLight = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	vec3 uLight = prng->rand3f();
 	li = light->sample_li(hitInfo, uLight, wi, visInfo, pdfLight);
 
 	f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.shadingNormal));
@@ -291,7 +293,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<const Scene>& scene, c
 		//sample from bsdf
 		BXDFflags sampledFlags;
 
-		vec3 uBsdf = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+		vec3 uBsdf = prng->rand3f();
 		f = hitInfo.bsdf->sample_f(wi, wo, uBsdf, pdfScattering, ~BXDFflags::DELTA, sampledFlags);
 		f = f * std::abs(dot(wi, hitInfo.shadingNormal));
 
@@ -378,49 +380,6 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 	vec4 rayDir = m_camInvView * vec4(normalize(rayTarget.xyz()), 0.0f);
 
 	return Ray(rayOrig.xyz(), normalize(rayDir.xyz()));	
-}
-
-vec3 Renderer::random_dir_sphere()
-{
-	vec3 randUnitSphere;
-	while(true)
-	{
-		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-
-		float lenSqr = dot(randUnitSphere, randUnitSphere);
-		if(lenSqr > FR_EPSILON && lenSqr <= 1.0f)
-		{
-			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
-			break;
-		}
-	}
-
-	return randUnitSphere;
-}
-
-vec3 Renderer::random_dir_hemisphere(const vec3& normal)
-{
-	vec3 randUnitSphere;
-	while(true)
-	{
-		randUnitSphere.x = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.y = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-		randUnitSphere.z = ((float)rand() / (float)RAND_MAX) * 2.0f - 1.0f;
-
-		float lenSqr = dot(randUnitSphere, randUnitSphere);
-		if(lenSqr > FR_EPSILON && lenSqr <= 1.0f)
-		{
-			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
-			break;
-		}
-	}
-
-	if(dot(randUnitSphere, normal) < 0.0f)
-		randUnitSphere = randUnitSphere * -1.0f;
-
-	return randUnitSphere;
 }
 
 float Renderer::mis_power_heuristic(uint32_t nf, float pdff, uint32_t ng, float pdfg)

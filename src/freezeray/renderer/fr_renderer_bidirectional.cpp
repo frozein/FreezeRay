@@ -23,16 +23,16 @@ RendererBidirectional::~RendererBidirectional()
 
 }
 
-vec3 RendererBidirectional::li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
+vec3 RendererBidirectional::li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
-		li = li + trace_bidirectional_path(scene, ray);
+		li = li + trace_bidirectional_path(prng, scene, ray);
 
 	return li / (float)m_samplesPerPixel;
 }
 
-vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
+vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
 	//generate camera subpath:
 	//---------------	
@@ -46,7 +46,7 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 	PathVertex cameraStart = PathVertex::from_camera(m_cam, ray, cameraMult);
 	cameraSubpath.push_back(cameraStart);
 
-	trace_walk(scene, ray, cameraMult, cameraPdfDir, cameraSubpath);
+	trace_walk(prng, scene, ray, cameraMult, cameraPdfDir, cameraSubpath);
 
 	//generate light subpath:
 	//---------------
@@ -56,12 +56,12 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 	if(numLights == 0)
 		return vec3(0.0f);
 
-	uint32_t lightIdx = rand() % numLights;
+	uint32_t lightIdx = prng->randi() % numLights;
 	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
 	float lightPdf = 1.0f / numLights;
 
-	vec3 u1 = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
-	vec3 u2 = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+	vec3 u1 = prng->rand3f();
+	vec3 u2 = prng->rand3f();
 
 	Ray lightRay;
 	vec3 lightNormal;
@@ -79,7 +79,7 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 		PathVertex lightStart = PathVertex::from_light(light, lightHit, lightMult);
 		lightSubpath.push_back(lightStart);
 
-		trace_walk(scene, lightRay, lightMult, lightPdfDir, lightSubpath);
+		trace_walk(prng, scene, lightRay, lightMult, lightPdfDir, lightSubpath);
 	}
 
 	//connect subpaths:
@@ -88,10 +88,10 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 	contribs.resize(m_maxDepth + 1);
 
 	for(uint32_t t = 2; t <= cameraSubpath.size(); t++) //TODO: allow t=1
-	for(uint32_t s = 0; s <= lightSubpath.size() ; s++)
+	for(uint32_t s = 0; s <= lightSubpath .size(); s++)
 	{
 		uint32_t depth = t + s - 1;
-		if(depth == 0 || depth > m_maxDepth)
+		if(depth <= 0 || depth > m_maxDepth)
 			continue;
 
 		vec3 contrib = vec3(0.0f);
@@ -100,15 +100,17 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 		{
 			const PathVertex end = cameraSubpath[t - 1];
 			if(end.type != PathVertex::Type::LIGHT && !end.intersection.light)
-				continue; //TODO: are these continues valid????
-			
-			if(end.intersection.light)
-				contrib = end.mult * end.intersection.light->le(end.intersection, end.intersection.wo);
+				contrib = vec3(0.0f);
 			else
 			{
-				const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
-				for(uint32_t i = 0; i < infiniteLights.size(); i++)
-					contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, end.intersection.wo);
+				if(end.intersection.light)
+					contrib = end.mult * end.intersection.light->le(end.intersection, end.intersection.wo);
+				else
+				{
+					const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
+					for(uint32_t i = 0; i < infiniteLights.size(); i++)
+						contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, -1.0f * end.intersection.wo);
+				}
 			}
 		}
 		else if(t == 1)
@@ -119,20 +121,23 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 		{
 			const PathVertex end = cameraSubpath[t - 1];
 			if(!end.intersection.bsdf || end.intersection.bsdf->is_delta())
-				continue; //TODO: are these continues valid????
-
-			if(m_importanceSampling)
-				contrib = end.mult * sample_one_light_mis(scene, end.intersection, end.intersection.wo);
+				contrib = vec3(0.0f);
 			else
-				contrib = end.mult * sample_one_light(scene, end.intersection, end.intersection.wo);
+				contrib = end.mult * sample_one_light(prng, scene, end.intersection, end.intersection.wo);
+
+			/*if(m_importanceSampling)
+				contrib = end.mult * sample_one_light_mis(scene, end.intersection, end.intersection.wo);
+			else*/
 		}
 		else //arbitrary connection
 		{
+			continue;
+
 			const PathVertex endCam = cameraSubpath[t - 1];
 			const PathVertex endLight = lightSubpath[s - 1];
 			if(!endCam  .intersection.bsdf || endCam  .intersection.bsdf->is_delta() ||
 			   !endLight.intersection.bsdf || endLight.intersection.bsdf->is_delta())
-				continue; //TODO: are these continues valid????
+				continue;
 
 			vec3 wiCam   = normalize(endLight.intersection.pos - endCam  .intersection.pos);
 			vec3 wiLight = normalize(endCam  .intersection.pos - endLight.intersection.pos);
@@ -178,7 +183,7 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<const
 	return l;
 }
 
-void RendererBidirectional::trace_walk(const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const
+void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const
 {
 	Ray curRay = ray;
 	for(uint32_t i = 0; i < m_maxDepth; i++)
@@ -213,7 +218,7 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<const Scene>& scene
 
 		if((bsdfFlags & BXDFflags::DELTA) != BXDFflags::NONE || m_importanceSampling)
 		{
-			vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+			vec3 u = prng->rand3f();
 			f = hitInfo.bsdf->sample_f(wi, wo, u, pdf, BXDFflags::ALL, sampledFlags);
 		}
 		else
@@ -221,17 +226,17 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<const Scene>& scene
 			if(((bsdfFlags & BXDFflags::REFLECTION)   != BXDFflags::NONE) &&
 			   ((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE))
 			{
-				wi = random_dir_sphere();
+				wi = prng->rand_sphere();
 				pdf = FR_INV_PI;
 			}
 			else if((bsdfFlags & BXDFflags::REFLECTION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(hitInfo.shadingNormal);
+				wi = prng->rand_hemisphere(hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else if((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(-1.0f * hitInfo.shadingNormal);
+				wi = prng->rand_hemisphere(-1.0f * hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else
@@ -266,7 +271,7 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<const Scene>& scene
 		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);
 		float q = std::max(0.05f, 1.0f - maxComp);
 		
-		float roulette = (float)rand() / RAND_MAX;
+		float roulette = prng->randf();
 		if(roulette < q)
 			break;
 		else

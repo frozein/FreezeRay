@@ -21,19 +21,19 @@ RendererPath::~RendererPath()
 
 }
 
-vec3 RendererPath::li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const
+vec3 RendererPath::li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const
 {
 	IntersectionInfo initialHitInfo;
 	bool initialHit = scene->intersect(ray, initialHitInfo);
 
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
-		li = li + trace_path(scene, ray, initialHit, initialHitInfo);
+		li = li + trace_path(prng, scene, ray, initialHit, initialHitInfo);
 
 	return li / (float)m_samplesPerPixel;
 }
 
-vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const Ray& ray, bool initialHit, const IntersectionInfo& initialHitInfo) const
+vec3 RendererPath::trace_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, bool initialHit, const IntersectionInfo& initialHitInfo) const
 {
 	vec3 light = vec3(0.0f);
 	vec3 mult = vec3(1.0f);
@@ -80,9 +80,9 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		if(!hitInfo.bsdf->is_delta())
 		{
 			if(m_mis)
-				light = light + mult * sample_one_light_mis(scene, hitInfo, wo);
+				light = light + mult * sample_one_light_mis(prng, scene, hitInfo, wo);
 			else
-				light = light + mult * sample_one_light(scene, hitInfo, wo);
+				light = light + mult * sample_one_light(prng, scene, hitInfo, wo);
 		}
 
 		//evaluate bsdf:
@@ -95,7 +95,7 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 
 		if((bsdfFlags & BXDFflags::DELTA) != BXDFflags::NONE || m_importanceSampling)
 		{
-			vec3 u = vec3((float)rand() / RAND_MAX, (float)rand() / RAND_MAX, (float)rand() / RAND_MAX);
+			vec3 u = prng->rand3f();
 			f = hitInfo.bsdf->sample_f(wi, wo, u, pdf, BXDFflags::ALL, sampledFlags);
 		}
 		else
@@ -103,17 +103,17 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 			if(((bsdfFlags & BXDFflags::REFLECTION)   != BXDFflags::NONE) &&
 			   ((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE))
 			{
-				wi = random_dir_sphere();
+				wi = prng->rand_sphere();
 				pdf = FR_INV_PI;
 			}
 			else if((bsdfFlags & BXDFflags::REFLECTION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(hitInfo.shadingNormal);
+				wi = prng->rand_hemisphere(hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else if((bsdfFlags & BXDFflags::TRANSMISSION) != BXDFflags::NONE)
 			{
-				wi = random_dir_hemisphere(-1.0f * hitInfo.shadingNormal);
+				wi = prng->rand_hemisphere(-1.0f * hitInfo.shadingNormal);
 				pdf = FR_INV_2_PI;
 			}
 			else
@@ -147,7 +147,7 @@ vec3 RendererPath::trace_path(const std::shared_ptr<const Scene>& scene, const R
 		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);
 		float q = std::max(0.05f, 1.0f - maxComp);
 		
-		float roulette = (float)rand() / RAND_MAX;
+		float roulette = prng->randf();
 		if(roulette < q)
 			break;
 		else

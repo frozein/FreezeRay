@@ -18,12 +18,17 @@ template<typename T>
 class DistributionDiscrete
 {
 public:
-	DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf, float totalDensity = 1.0f);
+	DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf);
 
 	const T& sample(float u, float& pdf) const;
+	float pdf(uint32_t idx) const;
+
+	float get_total_density() const { return m_totalDensity; }
 
 private:
+	float m_totalDensity;
 	std::vector<std::pair<T, float>> m_pmf;
+
 	std::vector<float> m_acceptanceTable;
 	std::vector<uint32_t> m_aliasTable;
 };
@@ -31,16 +36,27 @@ private:
 //-------------------------------------------//
 
 template<typename T>
-DistributionDiscrete<T>::DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf, float totalDensity) :
-	m_pmf(pmf)
+DistributionDiscrete<T>::DistributionDiscrete(const std::vector<std::pair<T, float>>& pmf) :
+	m_pmf(pmf), m_totalDensity(0.0)
 {
 	//validate:
 	//---------------
 	if(pmf.size() == 0)
 		throw std::invalid_argument("PMF must contain at least 1 element");
 
-	if(totalDensity <= 0.0f)
-		throw std::invalid_argument("total density must be postive");
+	//compute total density:
+	//---------------
+	m_totalDensity = 0.0;
+	for(uint32_t i = 0; i < pmf.size(); i++)
+	{
+		if(m_pmf[i].second < 0.0)
+			throw std::invalid_argument("Individual probabilities must be positive");
+
+		m_totalDensity += m_pmf[i].second;
+	}
+
+	if(m_totalDensity == 0.0)
+		throw std::invalid_argument("Total density must be positive");
 
 	//initialize domain, create scaled pmf, create small/large worklists:
 	//---------------
@@ -54,8 +70,7 @@ DistributionDiscrete<T>::DistributionDiscrete(const std::vector<std::pair<T, flo
 
 	for(uint32_t i = 0; i < pmf.size(); i++) 
 	{
-		m_pmf[i].second /= totalDensity;
-		float density = m_pmf[i].second;
+		float density = m_pmf[i].second / m_totalDensity;
 		scaledDensity[i] = density * m_pmf.size();
 
 		if(scaledDensity[i] < 1.0f)
@@ -112,8 +127,14 @@ const T& DistributionDiscrete<T>::sample(float u, float& pdf) const
 	if(acceptanceProb > m_acceptanceTable[selectIdx])
 		selectIdx = m_aliasTable[selectIdx];
 
-	pdf = m_pmf[selectIdx].second;
+	pdf = m_pmf[selectIdx].second / m_totalDensity;
 	return m_pmf[selectIdx].first;
+}
+
+template<typename T>
+float DistributionDiscrete<T>::pdf(uint32_t idx) const
+{
+	return m_pmf[idx].second / m_totalDensity;
 }
 
 }; //namespace fr

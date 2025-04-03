@@ -47,10 +47,10 @@ private:
 	bool m_importanceSampling;
 	bool m_mis;
 
-	vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
+	vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
 
-	vec3 trace_bidirectional_path(const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
-	void trace_walk(const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
+	vec3 trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
+	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
 };
 
 }; //namespace fr

@@ -5,13 +5,17 @@
 #include "freezeray/texture/stb_image.h"
 #include "freezeray/fr_scene.hpp"
 
+//TODO tweak
+#define MAX_TEXEL_DIST_RESOLUTION 128u
+
 //-------------------------------------------//
 
 namespace fr
 {
 
 LightEnvironment::LightEnvironment(std::shared_ptr<const vec3[]> image, uint32_t width, uint32_t height) :
-	Light(false, true), m_image(image), m_width(width), m_height(height), m_worldRadius(1.0f)
+	Light(false, true), m_image(image), m_width(width), m_height(height), m_worldRadius(1.0f),
+	m_distWidth(std::min(width, MAX_TEXEL_DIST_RESOLUTION)), m_distHeight(std::min(height, MAX_TEXEL_DIST_RESOLUTION))
 {
 	//validate:
 	//---------------
@@ -43,6 +47,9 @@ LightEnvironment::LightEnvironment(const std::string& path) :
 	m_image = std::shared_ptr<vec3[]>((vec3*)imageRaw, [](const vec3* img) { stbi_image_free((void*)img); });
 	m_width = (uint32_t)width;
 	m_height = (uint32_t)height;
+	
+	m_distWidth = std::min(m_width, MAX_TEXEL_DIST_RESOLUTION);
+	m_distHeight = std::min(m_height, MAX_TEXEL_DIST_RESOLUTION);
 
 	//generate texel distribution:
 	//---------------
@@ -55,7 +62,7 @@ vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 	//---------------
 	TexelCoordinate texel;
 	vec2 uv = sample_texel_area(u, texel, pdf);
-	vec3 li = get_texel(texel.u, texel.v);
+	vec3 li = get_texel(texel.u * m_width / m_distWidth, texel.v * m_height / m_distHeight);
 
 	//uv -> spherical:
 	//---------------
@@ -85,16 +92,14 @@ float LightEnvironment::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) c
 	float phi = std::acos(w.y);
 	float sinPhi = std::sin(phi);
 	
-	uint32_t u = (uint32_t)((theta * FR_INV_2_PI) * m_width);
-	uint32_t v = (uint32_t)((phi * FR_INV_2_PI) * m_height);
+	uint32_t u = (uint32_t)((theta * FR_INV_2_PI) * m_distWidth);
+	uint32_t v = (uint32_t)((phi * FR_INV_PI) * m_distHeight);
+	u = std::min(u, m_distWidth - 1);
+	v = std::min(v, m_distHeight - 1);
 
-	vec3 li = get_texel(u, v);
-	float lum = luminance(li) * sinPhi;
-	float texelArea = sinPhi / m_area;
-
-	float pdf = lum / m_luminance;
-	pdf /= texelArea;
-	pdf /= (2.0f * FR_PI * FR_PI * std::sin(phi));
+	float pdf = m_texelDistribution->pdf(u + m_distWidth * v);
+	pdf *= m_distWidth * m_distHeight;
+	pdf /= (2.0f * FR_PI * FR_PI * sinPhi);
 
 	return pdf;
 }
@@ -123,7 +128,7 @@ vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3&
 	//---------------
 	TexelCoordinate texel;
 	vec2 uv = sample_texel_area(u1, texel, pdfDir);
-	vec3 le = get_texel(texel.u, texel.v);
+	vec3 le = get_texel(texel.u * m_width / m_distWidth, texel.v * m_height / m_distHeight);
 
 	//uv -> spherical:
 	//---------------
@@ -138,9 +143,9 @@ vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3&
 	
 	//sample point on disk:
 	//---------------
-    float diskR = std::sqrt(u2.x);
-    float diskTheta = FR_2_PI * u2.y;
-    vec2 diskPos = vec2(diskR * std::cos(diskTheta), diskR * std::sin(diskTheta));
+	float diskR = std::sqrt(u2.x);
+	float diskTheta = FR_2_PI * u2.y;
+	vec2 diskPos = vec2(diskR * std::cos(diskTheta), diskR * std::sin(diskTheta));
 
 	vec3 v1, v2;
 	get_orthogonal(dir, v1, v2);
@@ -159,7 +164,7 @@ vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3&
 
 void LightEnvironment::pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const
 {
-
+	//TODO
 }
 
 //-------------------------------------------//
@@ -190,48 +195,62 @@ vec3 LightEnvironment::bilinear(const vec2& uv) const
 vec2 LightEnvironment::sample_texel_area(const vec3& u, TexelCoordinate& texel, float& pdf) const
 {
 	texel = m_texelDistribution->sample(u.x, pdf);
+
 	vec2 uv = vec2(
-		(texel.u + u.y) / (float)m_width, 
-		(texel.v + u.z) / (float)m_height
+		(texel.u + u.y) / (float)m_distWidth, 
+		(texel.v + u.z) / (float)m_distHeight
 	);
+	pdf *= m_distWidth * m_distHeight;
 
-	float phi = uv.y * FR_PI;
-	float texelArea = std::sin(phi) / m_area;
-
-	pdf /= texelArea;
 	return uv;
 }
 
 void LightEnvironment::create_texel_distribution()
 {
-	std::vector<std::pair<TexelCoordinate, float>> pmf(m_width * m_height);
-	
-	m_area = 0.0f;
-	m_luminance = 0.0f;
+	std::vector<std::pair<TexelCoordinate, float>> pmf(m_distWidth * m_distHeight);	
 	m_power = vec3(0.0f);
 
-	for(uint32_t y = 0; y < m_height; y++)
+	for(uint32_t y = 0; y < m_distHeight; y++)
 	{
-		float sinTheta = std::sin(FR_PI * ((float)y + 0.5f) / (float)m_height);
-
-		for(uint32_t x = 0; x < m_width; x++)
+		for(uint32_t x = 0; x < m_distWidth; x++)
 		{
-			vec3 texelValue = m_image[x + m_width * y];
-			texelValue = texelValue * sinTheta;
-			float lum = luminance(texelValue);
-
-			pmf[x + m_width * y] = { {x, y}, lum };
-
-			m_luminance += lum;
-			m_power = m_power + texelValue;
+			uint32_t startX = ( x      * m_width ) / m_distWidth;
+			uint32_t endX   = ((x + 1) * m_width ) / m_distWidth;
+			uint32_t startY = ( y      * m_height) / m_distHeight;
+			uint32_t endY   = ((y + 1) * m_height) / m_distHeight;
+			
+			endX = std::min(endX, m_width);
+			endY = std::min(endY, m_height);
+			
+			float totalLum = 0.0f;
+			vec3 totalColor = vec3(0.0f);
+			uint32_t count = 0;
+			
+			for(uint32_t imgY = startY; imgY < endY; imgY++)
+			{
+				float sinTheta = std::sin(FR_PI * ((float)imgY + 0.5f) / (float)m_height);
+				
+				for(uint32_t imgX = startX; imgX < endX; imgX++)
+				{
+					vec3 texelValue = m_image[imgX + m_width * imgY];
+					float lum = luminance(texelValue) * sinTheta;
+					
+					totalLum += lum;
+					totalColor = totalColor + texelValue;
+					count++;
+				}
+			}
+			
+			float avgLum = (count > 0) ? (totalLum / count) : 0.0f;
+			vec3 avgColor = (count > 0) ? (totalColor / (float)count) : vec3(0.0f);
+			
+			pmf[x + m_distWidth * y] = { {x, y}, avgLum };
+			m_power = m_power + avgColor;
 		}
-
-		m_area += m_width * sinTheta;
 	}
 
-	m_texelDistribution = std::make_unique<DistributionDiscrete<TexelCoordinate>>(pmf, m_luminance);
-
-	m_power = m_power / m_area;
+	m_texelDistribution = std::make_unique<DistributionDiscrete<TexelCoordinate>>(pmf);
+	m_power = m_power / (float)(m_distWidth * m_distHeight);
 }
 
 void LightEnvironment::preprocess(std::shared_ptr<const Scene> scene)
@@ -239,4 +258,4 @@ void LightEnvironment::preprocess(std::shared_ptr<const Scene> scene)
 	m_worldRadius = scene->get_world_radius();
 }
 
-}; //namespace fr
+}; // namespace fr

@@ -11,6 +11,7 @@
 #include <functional>
 #include "fr_camera.hpp"
 #include "fr_scene.hpp"
+#include "fr_prng.hpp"
 
 #include "quickmath.hpp"
 using namespace qm;
@@ -33,14 +34,11 @@ public:
 				std::function<void()> display, uint32_t displayFrequency = 1);
 
 protected:
-	virtual vec3 li(const std::shared_ptr<const Scene>& scene, const Ray& ray) const = 0;
+	virtual vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const = 0;
 
-	vec3 sample_one_light(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
-	vec3 sample_one_light_mis(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
+	vec3 sample_one_light(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
+	vec3 sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
 	bool trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const VisibilityTestInfo& visInfo) const;
-
-	static vec3 random_dir_sphere();
-	static vec3 random_dir_hemisphere(const vec3& normal);
 
 	static float mis_power_heuristic(uint32_t nf, float pdff, uint32_t ng, float pdfg);
 
