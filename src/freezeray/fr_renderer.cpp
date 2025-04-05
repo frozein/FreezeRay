@@ -351,7 +351,7 @@ bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, c
 	else
 		rayDir = visInfo.endPos - initialHitInfo.pos;
 
-	Ray ray(rayPos, rayDir);
+	Ray ray(rayPos, normalize(rayDir));
 	IntersectionInfo hitInfo;
 	bool hit = scene->intersect(ray, hitInfo);
 

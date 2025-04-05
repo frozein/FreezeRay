@@ -14,6 +14,15 @@ LightArea::LightArea(const std::shared_ptr<const Mesh>& mesh, const mat4& transf
 	if(!m_mesh)
 		throw std::invalid_argument("mesh must not be NULL");
 
+	//compute inv transforms:
+	//---------------
+	m_invTransform = inverse(transform);
+
+	m_invTransformNoTranslate = m_invTransform;
+	m_invTransformNoTranslate.m[3][0] = 0.0f;
+	m_invTransformNoTranslate.m[3][1] = 0.0f;
+	m_invTransformNoTranslate.m[3][2] = 0.0f;	
+
 	//generate triangle distribution:
 	//---------------
 	const uint32_t numTris = m_mesh->get_num_tris();
@@ -60,7 +69,17 @@ vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& 
 
 float LightArea::pdf_li(const IntersectionInfo& hitInfo, const vec3& w) const
 {
-	return 1.0f / m_area;
+	vec3 pos = hitInfo.pos + FR_EPSILON * normalize(w);
+	Ray ray(pos, w);
+
+	float t;
+	vec2 uv;
+	vec3 normal;
+	IntersectionInfo::Derivatives derivs;
+	if(!m_mesh->intersect(ray.transformed(m_invTransform, m_invTransformNoTranslate), nullptr, t, uv, normal, derivs))
+		return 0.0f;
+
+	return t * t / (std::abs(dot(normal, -1.0f * w)) * m_area);
 }
 
 vec3 LightArea::le(const IntersectionInfo& hitInfo, const vec3& w) const
@@ -74,9 +93,7 @@ vec3 LightArea::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3& normal
 	//---------------
 	vec3 objNormal;
 	vec3 pos = sample_mesh_area(u1, pdfPos, objNormal);
-
-	objNormal = normalize(objNormal);
-	normal = (m_transform * vec4(objNormal, 0.0f)).xyz();
+	normal = normalize((m_transform * vec4(objNormal, 0.0f)).xyz());
 
 	//sample direction:
 	//---------------

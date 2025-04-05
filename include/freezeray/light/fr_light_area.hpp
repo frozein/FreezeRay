@@ -36,6 +36,8 @@ public:
 private:
 	std::shared_ptr<const Mesh> m_mesh;
 	mat4 m_transform;
+	mat4 m_invTransform;
+	mat4 m_invTransformNoTranslate;
 	vec3 m_intensity;
 
 	float m_area;

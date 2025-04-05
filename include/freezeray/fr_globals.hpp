@@ -11,7 +11,7 @@ using namespace qm;
 
 //-------------------------------------------//
 
-#define FR_EPSILON 0.001f
+#define FR_EPSILON 0.0001f
 
 #define FR_PI 3.14159265358979323846f
 #define FR_2_PI 6.28318530717958647693f

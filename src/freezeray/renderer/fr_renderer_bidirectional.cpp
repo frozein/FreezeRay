@@ -124,44 +124,40 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>
 				contrib = vec3(0.0f);
 			else
 				contrib = end.mult * sample_one_light(prng, scene, end.intersection, end.intersection.wo);
-
-			/*if(m_importanceSampling)
-				contrib = end.mult * sample_one_light_mis(scene, end.intersection, end.intersection.wo);
-			else*/
 		}
 		else //arbitrary connection
 		{
-			continue;
-
 			const PathVertex endCam = cameraSubpath[t - 1];
 			const PathVertex endLight = lightSubpath[s - 1];
 			if(!endCam  .intersection.bsdf || endCam  .intersection.bsdf->is_delta() ||
 			   !endLight.intersection.bsdf || endLight.intersection.bsdf->is_delta())
-				continue;
-
-			vec3 wiCam   = normalize(endLight.intersection.pos - endCam  .intersection.pos);
-			vec3 wiLight = normalize(endCam  .intersection.pos - endLight.intersection.pos);
-
-			contrib = endCam  .mult * endCam  .intersection.bsdf->f(wiCam  , endCam  .intersection.wo, BXDFflags::ALL) *
-			          endLight.mult * endLight.intersection.bsdf->f(wiLight, endLight.intersection.wo, BXDFflags::ALL);
-
-			if(contrib != vec3(0.0f))
+				contrib = vec3(0.0f);
+			else
 			{
-				VisibilityTestInfo visTest;
-				visTest.endPos = endLight.intersection.pos;
-				visTest.infinite = false;
+				vec3 wiCam   = normalize(endLight.intersection.pos - endCam  .intersection.pos);
+				vec3 wiLight = normalize(endCam  .intersection.pos - endLight.intersection.pos);
 
-				vec3 toLight = endLight.intersection.pos - endCam.intersection.pos;
-				bool visible = trace_visibility_ray(scene, endCam.intersection, toLight, visTest);
+				contrib = endCam  .mult * endCam  .intersection.bsdf->f(wiCam  , endCam  .intersection.wo, BXDFflags::ALL) *
+				          endLight.mult * endLight.intersection.bsdf->f(wiLight, endLight.intersection.wo, BXDFflags::ALL);
 
-				vec3 to = endCam.intersection.pos - endLight.intersection.pos;
-				float g = 1.0f / dot(to, to);
-				to = to * std::sqrtf(g);
+				if(contrib != vec3(0.0f))
+				{
+					VisibilityTestInfo visTest;
+					visTest.endPos = endLight.intersection.pos;
+					visTest.infinite = false;
 
-				g *= std::abs(dot(to, endCam.intersection.shadingNormal));
-				g *= std::abs(dot(to, endLight.intersection.shadingNormal));
+					vec3 toLight = endLight.intersection.pos - endCam.intersection.pos;
+					bool visible = trace_visibility_ray(scene, endCam.intersection, toLight, visTest);
 
-				contrib = contrib * g * (float)visible;
+					vec3 to = endCam.intersection.pos - endLight.intersection.pos;
+					float g = 1.0f / dot(to, to);
+					to = to * std::sqrtf(g);
+
+					g *= std::abs(dot(to, endCam.intersection.shadingNormal));
+					g *= std::abs(dot(to, endLight.intersection.shadingNormal));
+
+					contrib = contrib * g * (float)visible;
+				}
 			}
 		}
 
@@ -267,15 +263,7 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const 
 
 		curRay = Ray(bouncePos, bounceDir);
 
-		//russian roulette to exit based on color:
-		float maxComp = std::max(std::max(mult.r, mult.g), mult.b);
-		float q = std::max(0.05f, 1.0f - maxComp);
-		
-		float roulette = prng->randf();
-		if(roulette < q)
-			break;
-		else
-			mult = mult / (1.0f - q);
+		//TODO: russian roulette?
 	}
 }
 
