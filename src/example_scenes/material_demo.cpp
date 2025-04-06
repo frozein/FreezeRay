@@ -14,7 +14,6 @@
 #include "freezeray/material/fr_material_mirror.hpp"
 #include "freezeray/material/fr_material_plastic.hpp"
 #include "freezeray/light/fr_light_environment.hpp"
-#include "freezeray/light/fr_light_area.hpp"
 
 //-------------------------------------------//
 
@@ -61,7 +60,7 @@ ExampleScene example_material_demo(const std::string& envMap)
 	std::vector<fr::ObjectReference> objects = {
 		{planeObj, planeTransform}, 
 		{goldSphereObj, goldSphereTransform},
-		//{glassSphereObj, glassSphereTransform},
+		{glassSphereObj, glassSphereTransform},
 		{mirrorSphereObj, mirrorSphereTransform},
 		{plasticSphereObj, plasticSphereTransform}
 	};
@@ -70,10 +69,8 @@ ExampleScene example_material_demo(const std::string& envMap)
 	//---------------
 	std::unique_ptr<fr::LightEnvironment> light = std::make_unique<fr::LightEnvironment>(envMap);
 	
-	std::unique_ptr<fr::LightArea> light2 = std::make_unique<fr::LightArea>(sphereMesh, glassSphereTransform, vec3(1.0f));
-
 	std::vector<std::unique_ptr<fr::Light>> lightList;
-	lightList.push_back(std::move(light2));
+	lightList.push_back(std::move(light));
 
 	//define scene:
 	//---------------

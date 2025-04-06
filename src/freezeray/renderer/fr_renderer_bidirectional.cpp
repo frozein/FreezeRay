@@ -109,7 +109,7 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>
 				{
 					const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
 					for(uint32_t i = 0; i < infiniteLights.size(); i++)
-						contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, -1.0f * end.intersection.wo);
+						contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, end.intersection.wo);
 				}
 			}
 		}

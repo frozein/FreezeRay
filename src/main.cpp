@@ -5,13 +5,17 @@
 #include "freezeray/renderer/fr_renderer_path.hpp"
 #include "freezeray/renderer/fr_renderer_bidirectional.hpp"
 
-#define WINDOW_W 1920
-#define WINDOW_H 1080
-
 //-------------------------------------------//
 
 int main(int argc, char** argv)
 {
+	//load scene:
+	//---------------
+	//ExampleScene scene = example_material_demo("assets/test_skybox.hdr");
+	ExampleScene scene = example_cornell_box();
+	//ExampleScene scene = example_sponza();
+	//ExampleScene scene = example_san_miguel();
+
 	//init SDL and create window:
 	//---------------
 	if(SDL_Init(SDL_INIT_EVERYTHING) != 0)
@@ -21,7 +25,7 @@ int main(int argc, char** argv)
 	}
 
 	SDL_Window* window;
-	window = SDL_CreateWindow("RT", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, WINDOW_W, WINDOW_H, SDL_WINDOW_SHOWN);
+	window = SDL_CreateWindow("RT", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, scene.windowWidth, scene.windowHeight, SDL_WINDOW_SHOWN);
 	if(!window)
 	{
 		printf("failed to create SDL window");
@@ -42,20 +46,14 @@ int main(int argc, char** argv)
 	memset(windowSurface->pixels, 0, windowSurface->h * windowSurface->pitch);
 	SDL_UnlockSurface(windowSurface);
 
-	//load scene:
-	//---------------
-	ExampleScene scene = example_material_demo("assets/test_skybox.hdr");
-	//ExampleScene scene = example_sponza();
-	//ExampleScene scene = example_san_miguel();
-
 	//create renderer:
 	//---------------
 	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
-		WINDOW_W, 
-		WINDOW_H, 
+		scene.windowWidth, 
+		scene.windowHeight, 
 		50,
-		100,
+		10,
 		true,
 		true
 	);
@@ -71,9 +69,9 @@ int main(int argc, char** argv)
 		uint8_t a = UINT8_MAX; //each pixel fully opaque
 
 		uint32_t writeColor = SDL_MapRGBA(windowSurface->format, r, g, b, a);
-		uint32_t writeY = WINDOW_H - y - 1;
+		uint32_t writeY = scene.windowHeight - y - 1;
 
-		((uint32_t*)windowSurface->pixels)[x + WINDOW_W * writeY] = writeColor; //TODO: be more robust about format handling
+		((uint32_t*)windowSurface->pixels)[x + scene.windowWidth * writeY] = writeColor; //TODO: be more robust about format handling
 	};
 
 	auto display = [&]() -> void {
