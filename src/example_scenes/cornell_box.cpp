@@ -18,6 +18,8 @@ ExampleScene example_cornell_box()
 	//---------------
 	std::shared_ptr<const fr::Mesh> squareMesh = fr::Mesh::from_unit_square();
 	std::shared_ptr<const fr::Mesh> cubeMesh = fr::Mesh::from_unit_cube();
+	std::shared_ptr<const fr::Mesh> sphereMesh = fr::Mesh::from_unit_sphere();
+	std::shared_ptr<const fr::Mesh> lampMesh = fr::Mesh::from_obj("assets/models/lamp.obj")[0];	
 
 	std::shared_ptr<fr::Texture<vec3>> whiteColorTex = std::make_shared<fr::TextureConstant<vec3>>(vec3(0.73f, 0.73f, 0.73f));
 	std::shared_ptr<fr::Texture<vec3>> redColorTex = std::make_shared<fr::TextureConstant<vec3>>(vec3(0.65f, 0.05f, 0.05f));
@@ -26,9 +28,9 @@ ExampleScene example_cornell_box()
 	std::shared_ptr<const fr::Material> whiteMat = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertian>(), whiteColorTex);
 	std::shared_ptr<const fr::Material> redMat = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertian>(), redColorTex);
 	std::shared_ptr<const fr::Material> greenMat = std::make_shared<fr::MaterialSingleBXDF>("", std::make_shared<fr::BRDFLambertian>(), greenColorTex);
-		
-	mat4 scaleMat = scale(vec3(1.0f  +FR_EPSILON, 1.0f + FR_EPSILON, 1.0f + FR_EPSILON));
-	
+
+	mat4 scaleMat = scale(vec3(1.0f + FR_EPSILON, 1.0f + FR_EPSILON, 1.0f + FR_EPSILON));
+
 	std::shared_ptr<const fr::Object> leftWallObj = std::make_shared<fr::Object>(squareMesh, redMat);
 	mat4 leftWallTransform = translate(vec3(-0.5f, 0.0f, 0.0f)) * rotate(vec3(0.0f, 0.0f, 1.0f), -90.0f) * scaleMat;
 
@@ -44,10 +46,6 @@ ExampleScene example_cornell_box()
 	std::shared_ptr<const fr::Object> ceilingObj = std::make_shared<fr::Object>(squareMesh, whiteMat);
 	mat4 ceilingTransform = translate(vec3(0.0f, 0.5f, 0.0f)) * scaleMat;
 	
-	float lightSize = 0.25f;
-	float lightHeight = 0.5f - FR_EPSILON;
-	mat4 lightTransform = translate(vec3(0.0f, lightHeight, 0.0f)) * scale(vec3(lightSize, 1.0f, lightSize));
-	
 	std::shared_ptr<const fr::Object> tallBoxObj = std::make_shared<fr::Object>(cubeMesh, whiteMat);
 	float tallBoxHeight = 0.55f;
 	float tallBoxWidth = 0.3f;
@@ -62,26 +60,35 @@ ExampleScene example_cornell_box()
 	                         rotate(vec3(0.0f, 1.0f, 0.0f), 18.0f) * 
 	                         scale(vec3(shortBoxWidth, shortBoxHeight, shortBoxWidth));
 
+	vec2 lampPos = vec2(0.4f, -0.4f);
+	mat4 lightTransform = translate(vec3(lampPos.x, 0.2f, lampPos.y)) * scale(vec3(0.0125f));						 
+
+	fr::ObjectComponent lampComp = { lampMesh, whiteMat };
+	std::vector<fr::ObjectComponent> test = {lampComp};
+	std::shared_ptr<const fr::Object> lampObj = std::make_shared<fr::Object>(test);
+	mat4 lampTransform = translate(vec3(lampPos.x, -0.5f, lampPos.y)) * scale(vec3(0.4f));
+
 	std::vector<fr::ObjectReference> objects = {
 		{leftWallObj, leftWallTransform},
 		{rightWallObj, rightWallTransform},
 		{backWallObj, backWallTransform},
 		{floorObj, floorTransform},
 		{ceilingObj, ceilingTransform},
+		{lampObj, lampTransform},
 		{tallBoxObj, tallBoxTransform},
 		{shortBoxObj, shortBoxTransform}
 	};
 
 	//create lights:
 	//---------------
-	std::unique_ptr<fr::LightArea> areaLight = std::make_unique<fr::LightArea>(
-		squareMesh,
+	std::unique_ptr<fr::LightArea> light = std::make_unique<fr::LightArea>(
+		sphereMesh,
 		lightTransform,
-		10.0f
+		500.0f
 	);
 	
 	std::vector<std::unique_ptr<fr::Light>> lightList;
-	lightList.push_back(std::move(areaLight));
+	lightList.push_back(std::move(light));
 
 	//define scene:
 	//---------------

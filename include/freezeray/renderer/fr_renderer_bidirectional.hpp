@@ -34,11 +34,23 @@ private:
 		} type;
 
 		vec3 mult;
+		float pdfFwd;
+		float pdfRev;
+		bool delta;
 
 		IntersectionInfo intersection;
 
-		static PathVertex from_surface(const IntersectionInfo& surface, const vec3& mult);
-		static PathVertex from_light(std::shared_ptr<const Light> light, const IntersectionInfo& hitInfo, const vec3& mult);
+		//---------------//
+
+		float convert_density(float pdf, const PathVertex& next) const;
+
+		vec3 f(const PathVertex& next) const;
+		float pdf(const std::shared_ptr<const Scene>& scene, PathVertex* prev, const PathVertex& next) const;
+		float pdf_light(const std::shared_ptr<const Scene>& scene, const PathVertex& next) const;
+		float pdf_light_origin(const std::shared_ptr<const Scene>& scene, const PathVertex& next) const;
+
+		static PathVertex from_surface(const IntersectionInfo& surface, const vec3& mult, float pdf, const PathVertex& prev);
+		static PathVertex from_light(std::shared_ptr<const Light> light, const IntersectionInfo& hitInfo, const vec3& mult, float pdf);
 		static PathVertex from_camera(std::shared_ptr<const Camera> camera, const Ray& ray, const vec3& mult);
 	};
 
@@ -51,6 +63,10 @@ private:
 
 	vec3 trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
 	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
+
+	float mis_weight(const std::shared_ptr<const Scene>& scene, std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath,
+	                 PathVertex& sampled, uint32_t s, uint32_t t) const;
+	float uniform_weight(std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath, uint32_t s, uint32_t t) const;
 };
 
 }; //namespace fr

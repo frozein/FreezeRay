@@ -52,10 +52,10 @@ int main(int argc, char** argv)
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
-		50,
+		64,
 		10,
 		true,
-		true
+		false
 	);
 
 	//start rendering:
