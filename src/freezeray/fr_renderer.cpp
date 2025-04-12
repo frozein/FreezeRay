@@ -234,7 +234,7 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<PRNG>& prng, const std::sh
 
 	//trace visibility ray, return:
 	//---------------
-	if(f != vec3(0.0f) && trace_visibility_ray(scene, hitInfo, wi, visInfo))
+	if(f != vec3(0.0f) && trace_visibility_ray(scene, visInfo))
 		return f * li / pdf;
 	else
 		return vec3(0.0f);
@@ -272,7 +272,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std
 	f = hitInfo.bsdf->f(wi, wo, ~BXDFflags::DELTA) * std::abs(dot(wi, hitInfo.shadingNormal));
 	pdfScattering = hitInfo.bsdf->pdf(wi, wo, ~BXDFflags::DELTA);
 
-	if(!trace_visibility_ray(scene, hitInfo, wi, visInfo))
+	if(!trace_visibility_ray(scene, visInfo))
 		li = vec3(0.0f);
 
 	if(pdfLight > 0.0f && pdfScattering > 0.0f)
@@ -306,11 +306,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std
 			float weight = mis_power_heuristic(1, pdfScattering, 1, pdfLight);
 
 			//trace ray, get light contrib
-			vec3 rayPos = hitInfo.pos;
-			if(dot(wi, hitInfo.shadingNormal) > 0.0f)
-				rayPos = rayPos + hitInfo.shadingNormal * FR_EPSILON;
-			else
-				rayPos = rayPos - hitInfo.shadingNormal * FR_EPSILON;
+			vec3 rayPos = hitInfo.pos + FR_EPSILON * wi;
 
 			Ray ray(rayPos, wi);
 			IntersectionInfo hitInfoBsdf;
@@ -340,33 +336,23 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std
 	return ld / pdfLightSample;
 }
 
-bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const VisibilityTestInfo& visInfo) const
+bool Renderer::trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const VisibilityTestInfo& visInfo) const
 {
-	vec3 rayPos = initialHitInfo.pos;
-	rayPos = rayPos + FR_EPSILON * normalize(wi);
+	vec3 rayPos = visInfo.startPos;
+	vec3 rayDir = normalize(visInfo.endPos - visInfo.startPos);
+	rayPos = rayPos + FR_EPSILON * rayDir;
 
-	vec3 rayDir;
-	if(visInfo.infinite)
-		rayDir = wi;
-	else
-		rayDir = visInfo.endPos - initialHitInfo.pos;
-
-	Ray ray(rayPos, normalize(rayDir));
+	Ray ray(rayPos, rayDir);
 	IntersectionInfo hitInfo;
 	bool hit = scene->intersect(ray, hitInfo);
 
-	if(visInfo.infinite)
-		return !hit;
-	else
-	{
-		if(!hit)
-			return true;
+	if(!hit)
+		return true;
 
-		float minDist = distance(initialHitInfo.pos, visInfo.endPos);
-		float dist = distance(initialHitInfo.pos, hitInfo.pos);
+	float minDist = distance(visInfo.startPos, visInfo.endPos);
+	float dist = distance(visInfo.startPos, hitInfo.pos);
 
-		return (dist + FR_EPSILON) > minDist;
-	}
+	return (dist + FR_EPSILON) > minDist;
 }
 
 Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const

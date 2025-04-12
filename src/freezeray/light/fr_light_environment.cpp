@@ -6,7 +6,7 @@
 #include "freezeray/fr_scene.hpp"
 
 //TODO tweak
-#define MAX_TEXEL_DIST_RESOLUTION 128u
+#define MAX_TEXEL_DIST_RESOLUTION 256u
 
 //-------------------------------------------//
 
@@ -77,8 +77,8 @@ vec3 LightEnvironment::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 	//---------------
 	wiWorld = vec3(sinPhi * cosTheta, cosPhi, sinPhi * sinTheta);
 	pdf /= (2.0f * FR_PI * FR_PI * sinPhi);
-	vis.infinite = true;
-	vis.endPos = vec3(0.0f);
+	vis.startPos = hitInfo.pos;
+	vis.endPos = hitInfo.pos + wiWorld * (2.0f * m_worldRadius);
 
 	return li;
 }
@@ -164,7 +164,25 @@ vec3 LightEnvironment::sample_le(const vec3& u1, const vec3& u2, Ray& ray, vec3&
 
 void LightEnvironment::pdf_le(const Ray& ray, const vec3& normal, float& pdfPos, float& pdfDir) const
 {
-	//TODO
+	vec3 w = -1.0f * ray.direction();
+
+	float theta = std::atan2(w.z, w.x);
+	if(theta < 0.0f)
+		theta += FR_2_PI;
+
+	float phi = std::acos(w.y);
+	float sinPhi = std::sin(phi);
+	
+	uint32_t u = (uint32_t)((theta * FR_INV_2_PI) * m_distWidth);
+	uint32_t v = (uint32_t)((phi * FR_INV_PI) * m_distHeight);
+	u = std::min(u, m_distWidth - 1);
+	v = std::min(v, m_distHeight - 1);
+
+	pdfDir = m_texelDistribution->pdf(u + m_distWidth * v);
+	pdfDir *= m_distWidth * m_distHeight;
+	pdfDir /= (2.0f * FR_PI * FR_PI * sinPhi);
+
+	pdfPos = 1.0f / (FR_PI * m_worldRadius * m_worldRadius);
 }
 
 //-------------------------------------------//

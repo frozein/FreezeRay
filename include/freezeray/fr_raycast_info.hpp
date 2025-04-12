@@ -42,7 +42,7 @@ struct IntersectionInfo
 
 struct VisibilityTestInfo
 {
-	bool infinite;
+	vec3 startPos;
 	vec3 endPos;
 };
 

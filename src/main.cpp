@@ -11,8 +11,8 @@ int main(int argc, char** argv)
 {
 	//load scene:
 	//---------------
-	//ExampleScene scene = example_material_demo("assets/test_skybox.hdr");
-	ExampleScene scene = example_cornell_box();
+	ExampleScene scene = example_material_demo("assets/test.hdr");
+	//ExampleScene scene = example_cornell_box();
 	//ExampleScene scene = example_sponza();
 	//ExampleScene scene = example_san_miguel();
 
@@ -52,7 +52,7 @@ int main(int argc, char** argv)
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
-		64,
+		10,
 		10,
 		true,
 		false

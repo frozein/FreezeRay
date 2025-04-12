@@ -38,7 +38,7 @@ protected:
 
 	vec3 sample_one_light(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
 	vec3 sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const IntersectionInfo& hitInfo, const vec3& wo) const;
-	bool trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const IntersectionInfo& initialHitInfo, const vec3& wi, const VisibilityTestInfo& visInfo) const;
+	bool trace_visibility_ray(const std::shared_ptr<const Scene>& scene, const VisibilityTestInfo& visInfo) const;
 
 	static float mis_power_heuristic(uint32_t nf, float pdff, uint32_t ng, float pdfg);
 

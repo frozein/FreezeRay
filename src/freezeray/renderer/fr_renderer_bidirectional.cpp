@@ -65,7 +65,14 @@ vec3 RendererBidirectional::li(const std::shared_ptr<PRNG>& prng, const std::sha
 {
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
-		li = li + trace_bidirectional_path(prng, scene, ray);
+	{
+		vec3 contrib = trace_bidirectional_path(prng, scene, ray);
+		if(std::isinf(contrib.x) || std::isinf(contrib.y) || std::isinf(contrib.z) ||
+		   std::isnan(contrib.x) || std::isnan(contrib.y) || std::isnan(contrib.z))
+		   continue;
+
+		li = li + contrib;
+	}
 
 	return li / (float)m_samplesPerPixel;
 }
@@ -84,7 +91,7 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>
 	PathVertex cameraStart = PathVertex::from_camera(m_cam, ray, cameraMult);
 	cameraSubpath.push_back(cameraStart);
 
-	trace_walk(prng, scene, ray, cameraMult, cameraPdfDir, cameraSubpath);
+	trace_walk(prng, scene, ray, TransportMode::RADIANCE, cameraMult, cameraPdfDir, cameraSubpath);
 
 	//generate light subpath:
 	//---------------
@@ -117,130 +124,44 @@ vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>
 		PathVertex lightStart = PathVertex::from_light(light, lightHit, lightMult, lightPdfPos * lightPdf);
 		lightSubpath.push_back(lightStart);
 
-		trace_walk(prng, scene, lightRay, lightMult, lightPdfDir, lightSubpath);
+		trace_walk(prng, scene, lightRay, TransportMode::IMPORTANCE, lightMult, lightPdfDir, lightSubpath);
+
+		if(light->is_infinite())
+		{
+			if(lightSubpath.size() > 1)
+				lightSubpath[1].pdfFwd = lightPdfPos * std::abs(dot(ray.direction(), lightSubpath[1].intersection.shadingNormal));
+
+			lightSubpath[0].pdfFwd = PathVertex::pdf_light_infinite(scene, lightRay.direction());
+		}
 	}
 
 	//connect subpaths:
 	//---------------
 	vec3 l = vec3(0.0f);
 
-	for(uint32_t t = 2; t <= cameraSubpath.size(); t++) //TODO: allow t=1
-	for(uint32_t s = 0; s <= lightSubpath .size(); s++)
+	for(uint32_t numCam   = 2; numCam   <= cameraSubpath.size(); numCam++) //TODO: allow numCam=1
+	for(uint32_t numLight = 0; numLight <= lightSubpath .size(); numLight++)
 	{
-		uint32_t depth = t + s - 1;
+		uint32_t depth = numCam + numLight - 1;
 		if(depth <= 0 || depth > m_maxDepth)
 			continue;
 
 		PathVertex sampled;
-		vec3 contrib = vec3(0.0f);
-
-		if(s == 0) //only use camera path, just look at last vertex
-		{
-			const PathVertex end = cameraSubpath[t - 1];
-			if(end.type != PathVertex::Type::LIGHT && !end.intersection.light)
-				contrib = vec3(0.0f);
-			else
-			{
-				if(end.intersection.light)
-					contrib = end.mult * end.intersection.light->le(end.intersection, end.intersection.wo);
-				else
-				{
-					const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
-					for(uint32_t i = 0; i < infiniteLights.size(); i++)
-						contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, end.intersection.wo);
-				}
-			}
-		}
-		else if(t == 1)
-		{
-			//TODO!!!
-		}
-		else if(s == 1) //only 1 vertex from light path, just do a standard direct light sample
-		{
-			const PathVertex end = cameraSubpath[t - 1];
-			if(!end.intersection.bsdf || end.intersection.bsdf->is_delta())
-				contrib = vec3(0.0f);
-			else
-			{
-				uint32_t numLights = (uint32_t)scene->get_lights().size();
-				uint32_t lightIdx = prng->randi() % numLights;
-			
-				vec3 u = prng->rand3f();
-				vec3 wi;
-				VisibilityTestInfo visInfo;
-				float pdf;
-			
-				const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
-				vec3 li = light->sample_li(end.intersection, u, wi, visInfo, pdf);
-			
-				pdf /= (float)numLights;
-
-				if(pdf == 0.0f)
-					contrib = vec3(0.0f);
-				else
-				{
-					IntersectionInfo sampledHit;
-					sampledHit.pos = visInfo.endPos;
-
-					sampled = PathVertex::from_light(light, sampledHit, li / pdf, 0.0f);
-					sampled.pdfFwd = sampled.pdf_light_origin(scene, end);
-				
-					contrib = sampled.mult * end.mult * end.f(sampled) * std::abs(dot(wi, end.intersection.shadingNormal));
-
-					if(contrib == vec3(0.0f) || !trace_visibility_ray(scene, end.intersection, wi, visInfo))
-						contrib = vec3(0.0f);
-				}
-			}
-		}
-		else //arbitrary connection
-		{
-			const PathVertex endCam = cameraSubpath[t - 1];
-			const PathVertex endLight = lightSubpath[s - 1];
-			if(!endCam  .intersection.bsdf || endCam  .intersection.bsdf->is_delta() ||
-			   !endLight.intersection.bsdf || endLight.intersection.bsdf->is_delta())
-				contrib = vec3(0.0f);
-			else
-			{
-				vec3 wiCam   = normalize(endLight.intersection.pos - endCam  .intersection.pos);
-				vec3 wiLight = normalize(endCam  .intersection.pos - endLight.intersection.pos);
-
-				contrib = endCam  .mult * endCam  .intersection.bsdf->f(wiCam  , endCam  .intersection.wo, BXDFflags::ALL) *
-				          endLight.mult * endLight.intersection.bsdf->f(wiLight, endLight.intersection.wo, BXDFflags::ALL);
-
-				if(contrib != vec3(0.0f))
-				{
-					VisibilityTestInfo visTest;
-					visTest.endPos = endLight.intersection.pos;
-					visTest.infinite = false;
-
-					vec3 toLight = endLight.intersection.pos - endCam.intersection.pos;
-					bool visible = trace_visibility_ray(scene, endCam.intersection, toLight, visTest);
-
-					vec3 to = endCam.intersection.pos - endLight.intersection.pos;
-					float g = 1.0f / dot(to, to);
-					to = to * std::sqrtf(g);
-
-					g *= std::abs(dot(to, endCam.intersection.shadingNormal));
-					g *= std::abs(dot(to, endLight.intersection.shadingNormal));
-
-					contrib = contrib * g * (float)visible;
-				}
-			}
-		}
+		vec3 contrib = connect_subpaths(scene, prng, cameraSubpath, lightSubpath, numCam, numLight, sampled);
 
 		if(contrib != vec3(0.0f))
 		{
 			if(m_mis)
-				l = l + contrib * mis_weight(scene, cameraSubpath, lightSubpath, sampled, s, t);
+				l = l + contrib * mis_weight(scene, cameraSubpath, lightSubpath, sampled, numLight, numCam);
 			else
-				l = l + contrib * uniform_weight(cameraSubpath, lightSubpath, s, t);
+				l = l + contrib * uniform_weight(cameraSubpath, lightSubpath, numLight, numCam);
 		}
 	}
 
 	return l;
 }
 
-void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const
+void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const
 {
 	float pdfFwd = pdf;
 	float pdfRev = 0.0f;
@@ -258,8 +179,11 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const 
 		//add infinite lights + break if nothing hit
 		if(!hit)
 		{
-			PathVertex lightVert = PathVertex::from_light(nullptr, hitInfo, mult, pdfFwd);
-			vertices.push_back(lightVert);
+			if(mode == TransportMode::RADIANCE)
+			{
+				PathVertex lightVert = PathVertex::from_light(nullptr, hitInfo, mult, pdfFwd);
+				vertices.push_back(lightVert);
+			}
 
 			break;
 		}
@@ -321,8 +245,6 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const 
 		float cosTheta = std::abs(dot(wi, hitInfo.shadingNormal));
 		mult = mult * (f * cosTheta / pdf);
 
-		//TODO: account for asymmetry
-		
 		//update pdfs
 		pdfFwd = pdf;
 		pdfRev = hitInfo.bsdf->pdf(wo, wi, BXDFflags::ALL);
@@ -346,23 +268,121 @@ void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const 
 	}
 }
 
+vec3 RendererBidirectional::connect_subpaths(const std::shared_ptr<const Scene>& scene, const std::shared_ptr<PRNG>& prng, 
+                                             const std::vector<PathVertex>& cameraSubpath, const std::vector<PathVertex>& lightSubpath, 
+											 uint32_t numCam, uint32_t numLight, PathVertex& sampled) const
+{
+	if(numCam > 1 && numLight != 0 && cameraSubpath[numCam - 1].type == PathVertex::Type::LIGHT)
+		return vec3(0.0f);
+
+	if(numLight == 0) //only use camera path, just look at last vertex
+	{
+		const PathVertex end = cameraSubpath[numCam - 1];
+		if(end.type != PathVertex::Type::LIGHT && !end.intersection.light)
+			return vec3(0.0f);
+
+		if(end.intersection.light)
+			return end.mult * end.intersection.light->le(end.intersection, end.intersection.wo);
+		else
+		{
+			vec3 contrib = vec3(0.0f);
+
+			const std::vector<std::shared_ptr<const Light>>& infiniteLights = scene->get_infinite_lights();
+			for(uint32_t i = 0; i < infiniteLights.size(); i++)
+				contrib = contrib + end.mult * infiniteLights[i]->le(end.intersection, end.intersection.wo);
+
+			return contrib;
+		}
+	}
+	else if(numCam == 1)
+	{
+		//TODO!!!
+		return vec3(0.0f);
+	}
+	else if(numLight == 1) //only 1 vertex from light path, just do a standard direct light sample
+	{
+		const PathVertex end = cameraSubpath[numCam - 1];
+		if(!end.intersection.bsdf || end.intersection.bsdf->is_delta())
+			return vec3(0.0f);
+
+		uint32_t numLights = (uint32_t)scene->get_lights().size();
+		uint32_t lightIdx = prng->randi() % numLights;
+	
+		vec3 u = prng->rand3f();
+		vec3 wi;
+		VisibilityTestInfo visInfo;
+		float pdf;
+	
+		const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
+		vec3 li = light->sample_li(end.intersection, u, wi, visInfo, pdf);
+	
+		pdf /= (float)numLights;
+
+		if(pdf == 0.0f)
+			return vec3(0.0f);
+
+		IntersectionInfo sampledHit;
+		sampledHit.pos = visInfo.endPos;
+
+		sampled = PathVertex::from_light(light, sampledHit, li / pdf, 0.0f);
+		sampled.pdfFwd = sampled.pdf_light_origin(scene, end);
+	
+		vec3 contrib = sampled.mult * end.mult * end.f(sampled) * std::abs(dot(wi, end.intersection.shadingNormal));
+		if(contrib == vec3(0.0f) || !trace_visibility_ray(scene, visInfo))
+			return vec3(0.0f);
+
+		return contrib;
+	}
+	else //arbitrary connection
+	{
+		const PathVertex endCam = cameraSubpath[numCam - 1];
+		const PathVertex endLight = lightSubpath[numLight - 1];
+		if(!endCam  .intersection.bsdf || endCam  .intersection.bsdf->is_delta() ||
+		   !endLight.intersection.bsdf || endLight.intersection.bsdf->is_delta())
+			return vec3(0.0f);
+
+		vec3 contrib = endCam.mult * endCam.f(endLight) * endLight.mult * endLight.f(endCam);
+		if(contrib == vec3(0.0f))
+			return vec3(0.0f);
+
+		VisibilityTestInfo visTest;
+		visTest.startPos = endCam.intersection.pos;
+		visTest.endPos = endLight.intersection.pos;
+
+		bool visible = trace_visibility_ray(scene, visTest);
+
+		vec3 to = endCam.intersection.pos - endLight.intersection.pos;
+		float g = 1.0f / dot(to, to);
+		to = to * std::sqrtf(g);
+
+		g *= std::abs(dot(to, endCam.intersection.shadingNormal));
+		g *= std::abs(dot(to, endLight.intersection.shadingNormal));
+
+		return contrib * g * (float)visible;
+	}
+
+	//shouldn't ever reach
+	return vec3(0.0f);
+}
+
+
 float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scene, std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath,
-                                        PathVertex& sampled, uint32_t s, uint32_t t) const
+                                        PathVertex& sampled, uint32_t numLight, uint32_t numCam) const
 {
 	//early return for paths of depth 2:
 	//---------------
-	if(s + t == 2)
+	if(numLight + numCam == 2)
 		return 1.0f;
 
 	//modify pdfs for connected vertices:
 	//---------------
-	PathVertex* lightEnd      = s > 0 ? &lightSubpath [s - 1] : nullptr;
-	PathVertex* cameraEnd     = t > 0 ? &cameraSubpath[t - 1] : nullptr;
-	PathVertex* lightEndPrev  = s > 1 ? &lightSubpath [s - 2] : nullptr;
-	PathVertex* cameraEndPrev = t > 1 ? &cameraSubpath[t - 2] : nullptr;
+	PathVertex* cameraEnd     = numCam   > 0 ? &cameraSubpath[numCam   - 1] : nullptr;
+	PathVertex* lightEnd      = numLight > 0 ? &lightSubpath [numLight - 1] : nullptr;
+	PathVertex* cameraEndPrev = numCam   > 1 ? &cameraSubpath[numCam   - 2] : nullptr;
+	PathVertex* lightEndPrev  = numLight > 1 ? &lightSubpath [numLight - 2] : nullptr;
 	
 	ScopedAssignment<PathVertex> sampledAssign;
-	if(s == 1)
+	if(numLight == 1)
 		sampledAssign = {lightEnd, sampled};
 
 	ScopedAssignment<bool> deltaAssign1;
@@ -375,7 +395,7 @@ float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scen
 	ScopedAssignment<float> cameraEndAssign;
 	if(cameraEnd)
 	{
-		if(s > 0)
+		if(numLight > 0)
 			cameraEndAssign = {&cameraEnd->pdfRev, lightEnd->pdf(scene, lightEndPrev, *cameraEnd)};
 		else
 			cameraEndAssign = {&cameraEnd->pdfRev, cameraEnd->pdf_light_origin(scene, *cameraEndPrev)};
@@ -384,7 +404,7 @@ float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scen
 	ScopedAssignment<float> cameraEndPrevAssign;
 	if(cameraEndPrev)
 	{
-		if(s > 0)
+		if(numLight > 0)
 			cameraEndPrevAssign = {&cameraEndPrev->pdfRev, cameraEnd->pdf(scene, lightEnd, *cameraEndPrev)};
 		else
 			cameraEndPrevAssign = {&cameraEndPrev->pdfRev, cameraEnd->pdf_light(scene, *cameraEndPrev)};
@@ -403,7 +423,7 @@ float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scen
 	float sum = 0.0f;
 
 	float pdfCam = 1.0f;
-	for(uint32_t i = t - 1; i > 1; i--) //TODO: allow i == 1
+	for(uint32_t i = numCam - 1; i > 1; i--) //TODO: allow i == 1
 	{
 		pdfCam *= (cameraSubpath[i].pdfRev == 0.0f ? 1.0f : cameraSubpath[i].pdfRev) / 
 		          (cameraSubpath[i].pdfFwd == 0.0f ? 1.0f : cameraSubpath[i].pdfFwd);
@@ -413,7 +433,7 @@ float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scen
 	}
 
 	float pdfLight = 1.0f;
-	for(int32_t i = (int32_t)s - 1; i >= 0; i--)
+	for(int32_t i = (int32_t)numLight - 1; i >= 0; i--)
 	{
 		pdfLight *= (lightSubpath[i].pdfRev == 0.0f ? 1.0f : lightSubpath[i].pdfRev) /
 		            (lightSubpath[i].pdfFwd == 0.0f ? 1.0f : lightSubpath[i].pdfFwd);
@@ -426,19 +446,19 @@ float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scen
 	return 1.0f / (1.0f + sum);
 }
 
-float RendererBidirectional::uniform_weight(std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath, uint32_t s, uint32_t t) const
+float RendererBidirectional::uniform_weight(std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath, uint32_t numLight, uint32_t numCam) const
 {
 	//early return for paths of depth 2:
 	//---------------
-	if(s + t == 2)
+	if(numLight + numCam == 2)
 		return 1.0f;
 
 	//remove delta for connected vertices:
 	//---------------
-	PathVertex* lightEnd      = s > 0 ? &lightSubpath [s - 1] : nullptr;
-	PathVertex* cameraEnd     = t > 0 ? &cameraSubpath[t - 1] : nullptr;
-	PathVertex* lightEndPrev  = s > 1 ? &lightSubpath [s - 2] : nullptr;
-	PathVertex* cameraEndPrev = t > 1 ? &cameraSubpath[t - 2] : nullptr;
+	PathVertex* cameraEnd     = numCam   > 0 ? &cameraSubpath[numCam   - 1] : nullptr;
+	PathVertex* lightEnd      = numLight > 0 ? &lightSubpath [numLight - 1] : nullptr;
+	PathVertex* cameraEndPrev = numCam   > 1 ? &cameraSubpath[numCam   - 2] : nullptr;
+	PathVertex* lightEndPrev  = numLight > 1 ? &lightSubpath [numLight - 2] : nullptr;
 	
 	ScopedAssignment<bool> deltaAssign1;
 	ScopedAssignment<bool> deltaAssign2;
@@ -451,11 +471,11 @@ float RendererBidirectional::uniform_weight(std::vector<PathVertex>& cameraSubpa
 	//---------------
 	float sum = 0.0f;
 
-	for(uint32_t i = t - 1; i > 1; i--) //TODO: allow i == 1
+	for(uint32_t i = numCam - 1; i > 1; i--) //TODO: allow i == 1
 		if(!cameraSubpath[i].delta && !cameraSubpath[i - 1].delta)
 			sum += 1.0f;
 
-	for(int32_t i = (int32_t)s - 1; i >= 0; i--)
+	for(int32_t i = (int32_t)numLight - 1; i >= 0; i--)
 	{
 		bool deltaLight = i > 0 ? lightSubpath[i - 1].delta : lightSubpath[0].intersection.light->is_delta();
 		if(!lightSubpath[i].delta && !deltaLight)
@@ -510,7 +530,7 @@ float RendererBidirectional::PathVertex::pdf_light(const std::shared_ptr<const S
 	to = to * invDist2;
 
 	float pdf;
-	if(intersection.light->is_infinite())
+	if(!intersection.light || intersection.light->is_infinite())
 	{
 		float worldRadius = scene->get_world_radius();
 		pdf = 1.0f / (FR_PI * worldRadius * worldRadius);
@@ -533,15 +553,8 @@ float RendererBidirectional::PathVertex::pdf_light_origin(const std::shared_ptr<
 	vec3 to = normalize(next.intersection.pos - intersection.pos);
 
 	float pdf;
-	if(intersection.light->is_infinite())
-	{
-		pdf = 0.0f;
-		const std::vector<std::shared_ptr<const Light>>& infLights = scene->get_infinite_lights();
-		for(uint32_t i = 0; i < infLights.size(); i++)
-			pdf += infLights[i]->pdf_li({}, -1.0f * to);
-		
-		pdf *= (float)infLights.size() / (float)scene->get_lights().size();
-	}
+	if(!intersection.light || intersection.light->is_infinite())
+		return pdf_light_infinite(scene, to);
 	else
 	{
 		float pdfPos;
@@ -552,6 +565,16 @@ float RendererBidirectional::PathVertex::pdf_light_origin(const std::shared_ptr<
 	}
 
 	return pdf;
+}
+
+float RendererBidirectional::PathVertex::pdf_light_infinite(const std::shared_ptr<const Scene>& scene, vec3 w)
+{
+	float pdf = 0.0f;
+	const std::vector<std::shared_ptr<const Light>>& infLights = scene->get_infinite_lights();
+	for(uint32_t i = 0; i < infLights.size(); i++)
+		pdf += infLights[i]->pdf_li({}, -1.0f * w);
+
+	return pdf * (float)infLights.size() / (float)scene->get_lights().size();
 }
 
 RendererBidirectional::PathVertex RendererBidirectional::PathVertex::from_surface(const IntersectionInfo& surface, const vec3& mult, float pdf, const PathVertex& prev)

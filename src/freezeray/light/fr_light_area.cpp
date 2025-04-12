@@ -61,7 +61,7 @@ vec3 LightArea::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3& 
 
 	wiWorld = normalize(toLight);
 	pdf *= dot(toLight, toLight) / std::abs(dot(-1.0f * wiWorld, hitInfo.shadingNormal));
-	vis.infinite = false;
+	vis.startPos = hitInfo.pos;
 	vis.endPos = pos;
 
 	return m_intensity;

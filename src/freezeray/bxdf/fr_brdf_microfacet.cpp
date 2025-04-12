@@ -34,6 +34,8 @@ vec3 BRDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 
 vec3 BRDFMicrofacet::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
+	pdfVal = 0.0f;
+
 	if(wo.y < 0.0f)
 		return vec3(0.0f);
 

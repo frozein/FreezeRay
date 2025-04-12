@@ -17,8 +17,8 @@ vec3 LightDirectional::sample_li(const IntersectionInfo& hitInfo, const vec3& u,
 {
 	wiWorld = m_dir;
 	pdf = 1.0f;
-	vis.infinite = true;
-	vis.endPos = vec3(0.0f);
+	vis.startPos = hitInfo.pos;
+	vis.endPos = hitInfo.pos + m_dir * (2.0f * m_worldRadius);
 
 	return m_intensity;
 }

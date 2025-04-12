@@ -26,6 +26,12 @@ enum class BXDFflags : uint32_t
 	ALL          = UINT32_MAX
 };
 
+enum class TransportMode : uint32_t
+{
+	IMPORTANCE,
+	RADIANCE
+};
+
 class BXDF
 {
 public:

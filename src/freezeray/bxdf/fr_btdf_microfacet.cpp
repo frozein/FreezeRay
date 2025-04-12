@@ -44,6 +44,8 @@ vec3 BTDFMicrofacet::f(const vec3& wi, const vec3& wo) const
 
 vec3 BTDFMicrofacet::sample_f(vec3& wi, const vec3& wo, const vec2& u, float& pdfVal) const
 {
+	pdfVal = 0.0f;
+
 	//validate:
 	//---------------
 	if(wo.y == 0.0f)

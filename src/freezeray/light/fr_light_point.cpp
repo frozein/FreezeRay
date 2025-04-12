@@ -18,7 +18,7 @@ vec3 LightPoint::sample_li(const IntersectionInfo& hitInfo, const vec3& u, vec3&
 
 	wiWorld = normalize(toLight);
 	pdf = 1.0f;
-	vis.infinite = false;
+	vis.startPos = hitInfo.pos;
 	vis.endPos = m_pos;
 
 	return m_intensity / dot(toLight, toLight);

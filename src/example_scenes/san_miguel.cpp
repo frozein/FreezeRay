@@ -2,6 +2,7 @@
 
 #include "freezeray/fr_object.hpp"
 #include "freezeray/light/fr_light_directional.hpp"
+#include "freezeray/light/fr_light_environment.hpp"
 #include "freezeray/bxdf/fr_brdf_lambertian.hpp"
 
 //-------------------------------------------//
@@ -28,7 +29,7 @@ ExampleScene example_san_miguel()
 	//create lights:
 	//---------------
 	std::unique_ptr<fr::Light> light1 = 
-		std::make_unique<fr::LightDirectional>(normalize(vec3(0.25f, 1.0f, 0.25f)), vec3(1.0f));
+		std::make_unique<fr::LightEnvironment>("assets/test.hdr");
 		
 	std::vector<std::unique_ptr<fr::Light>> lightList;
 	lightList.push_back(std::move(light1));

@@ -48,6 +48,7 @@ private:
 		float pdf(const std::shared_ptr<const Scene>& scene, PathVertex* prev, const PathVertex& next) const;
 		float pdf_light(const std::shared_ptr<const Scene>& scene, const PathVertex& next) const;
 		float pdf_light_origin(const std::shared_ptr<const Scene>& scene, const PathVertex& next) const;
+		static float pdf_light_infinite(const std::shared_ptr<const Scene>& scene, vec3 w);
 
 		static PathVertex from_surface(const IntersectionInfo& surface, const vec3& mult, float pdf, const PathVertex& prev);
 		static PathVertex from_light(std::shared_ptr<const Light> light, const IntersectionInfo& hitInfo, const vec3& mult, float pdf);
@@ -62,7 +63,11 @@ private:
 	vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
 
 	vec3 trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
-	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
+	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
+
+	vec3 connect_subpaths(const std::shared_ptr<const Scene>& scene, const std::shared_ptr<PRNG>& prng, 
+	                      const std::vector<PathVertex>& cameraSubpath, const std::vector<PathVertex>& lightSubpath, 
+	                      uint32_t numCam, uint32_t numLight, PathVertex& sampled) const;
 
 	float mis_weight(const std::shared_ptr<const Scene>& scene, std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath,
 	                 PathVertex& sampled, uint32_t s, uint32_t t) const;
