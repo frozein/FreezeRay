@@ -28,7 +28,14 @@ vec3 RendererPath::li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<c
 
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
-		li = li + trace_path(prng, scene, ray, initialHit, initialHitInfo);
+	{
+		vec3 contrib = trace_path(prng, scene, ray, initialHit, initialHitInfo);
+		if(std::isinf(contrib.x) || std::isinf(contrib.y) || std::isinf(contrib.z) ||
+		   std::isnan(contrib.x) || std::isnan(contrib.y) || std::isnan(contrib.z))
+		   continue;
+
+		li = li + contrib;
+	}
 
 	return li / (float)m_samplesPerPixel;
 }

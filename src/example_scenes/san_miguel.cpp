@@ -29,7 +29,7 @@ ExampleScene example_san_miguel()
 	//create lights:
 	//---------------
 	std::unique_ptr<fr::Light> light1 = 
-		std::make_unique<fr::LightEnvironment>("assets/test.hdr");
+		std::make_unique<fr::LightEnvironment>("assets/skyboxes/noon_grass_4k.hdr");
 		
 	std::vector<std::unique_ptr<fr::Light>> lightList;
 	lightList.push_back(std::move(light1));
@@ -41,8 +41,8 @@ ExampleScene example_san_miguel()
 	//define camera:
 	//---------------
 	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(22.0f, 1.0f, 2.0f), 
-		normalize(vec3(-2.0f, 0.0f, -1.0f)), 
+		vec3(22.0f, 1.0f, 13.0f), 
+		normalize(vec3(-1.0f, 0.0f, -1.0f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
 		(float)WINDOW_W / (float)WINDOW_H

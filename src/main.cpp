@@ -1,20 +1,30 @@
 #include <SDL2/SDL.h>
 #include <iostream>
 
+#define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "example_scene.hpp"
 #include "freezeray/renderer/fr_renderer_path.hpp"
 #include "freezeray/renderer/fr_renderer_bidirectional.hpp"
+#include "stb_image_write.h"
 
 //-------------------------------------------//
 
 int main(int argc, char** argv)
 {
+	//validate:
+	//---------------
+	if(argc < 2)
+	{
+		std::cout << "ERROR: no output path specified" << std::endl;
+		return -1;
+	}
+
 	//load scene:
 	//---------------
-	ExampleScene scene = example_material_demo("assets/test.hdr");
+	//ExampleScene scene = example_material_demo("assets/skyboxes/noon_grass_4k.hdr");
 	//ExampleScene scene = example_cornell_box();
 	//ExampleScene scene = example_sponza();
-	//ExampleScene scene = example_san_miguel();
+	ExampleScene scene = example_san_miguel();
 
 	//init SDL and create window:
 	//---------------
@@ -46,16 +56,20 @@ int main(int argc, char** argv)
 	memset(windowSurface->pixels, 0, windowSurface->h * windowSurface->pitch);
 	SDL_UnlockSurface(windowSurface);
 
+	//create output texture:
+	//---------------
+	std::unique_ptr<uint32_t[]> outTex = std::make_unique<uint32_t[]>(scene.windowWidth * scene.windowHeight);
+
 	//create renderer:
 	//---------------
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
 		10,
 		10,
 		true,
-		false
+		true
 	);
 
 	//start rendering:
@@ -68,10 +82,13 @@ int main(int argc, char** argv)
 		uint8_t b = (uint8_t)(color.b * 255.0f);
 		uint8_t a = UINT8_MAX; //each pixel fully opaque
 
-		uint32_t writeColor = SDL_MapRGBA(windowSurface->format, r, g, b, a);
 		uint32_t writeY = scene.windowHeight - y - 1;
 
-		((uint32_t*)windowSurface->pixels)[x + scene.windowWidth * writeY] = writeColor; //TODO: be more robust about format handling
+		uint32_t writeWindow = SDL_MapRGBA(windowSurface->format, r, g, b, a);
+		((uint32_t*)windowSurface->pixels)[x + scene.windowWidth * writeY] = writeWindow;
+
+		uint32_t writeTex = (a << 24) | (b << 16) | (g << 8) | r;
+		outTex[x + scene.windowWidth * writeY] = writeTex;
 	};
 
 	auto display = [&]() -> void {
@@ -92,6 +109,10 @@ int main(int argc, char** argv)
 	renderer->render(scene.scene, writePixel, display, 3);
 
 	SDL_UnlockSurface(windowSurface);
+
+	//save file to texture:
+	//---------------
+	stbi_write_png(argv[1], scene.windowWidth, scene.windowHeight, 4, outTex.get(), scene.windowWidth * sizeof(uint32_t));
 
 	//print total rendering time and continue updating window until closed:
 	//---------------
