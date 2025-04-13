@@ -7,19 +7,12 @@
 #define FR_TEXTURE_IMAGE_H
 
 #include "../fr_texture.hpp"
+#include "../fr_image.hpp"
 
 //-------------------------------------------//
 
 namespace fr
 {
-
-template<typename T>
-struct Image
-{
-	uint32_t width;
-	uint32_t height;
-	std::shared_ptr<const T[]> buf;	
-};
 
 template<typename T, typename Tmemory, typename Tprocessing = T>
 class TextureImage : public Texture<T>

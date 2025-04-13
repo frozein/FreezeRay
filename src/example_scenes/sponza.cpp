@@ -32,7 +32,7 @@ ExampleScene example_sponza()
 	//create lights:
 	//---------------
 	std::unique_ptr<fr::Light> light1 = 
-		std::make_unique<fr::LightEnvironment>("assets/test_skybox.png");
+		std::make_unique<fr::LightDirectional>(normalize(vec3(0.1f, 1.0f, 0.1f)), vec3(1.0f));
 		
 	std::shared_ptr<const fr::Mesh> light2Mesh = fr::Mesh::from_obj("assets/models/bunny.obj")[0];
 	mat4 light2Transform = translate(vec3(-250.0f, 0.0f, -40.0f)) * rotate(vec3(0.0f, 1.0f, 0.0f), 90.0f) * scale(vec3(75.0f));

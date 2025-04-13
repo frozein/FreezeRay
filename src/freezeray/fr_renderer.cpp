@@ -12,7 +12,7 @@
 namespace fr
 {
 
-#define WORKGROUP_SIZE 128
+#define WORKGROUP_SIZE 16
 
 //-------------------------------------------//
 
@@ -138,42 +138,40 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 	std::atomic<uint64_t> threadsRendering = 0;
 
 	auto processWorkgroup = [&](const WorkGroup& group, const std::shared_ptr<PRNG>& prng) {
-		for(int32_t y = group.endY; y >= (int32_t)group.startY; y--)
+		//wait for main thread to display
 		{
-			//wait for main thread to display
-			{
-				std::unique_lock<std::mutex> lock(displayMutex);
-				displayCV.wait(lock, [&]{ return !shouldDisplay; });
-			}
-
-			//increment threads rendering
-			threadsRendering.fetch_add(1);
-
-			for(uint32_t x = group.startX; x <= group.endX; x++)
-			{
-				//generate ray for current pixel
-				Ray cameraRay = get_camera_ray(x, (uint32_t)y);
-				Ray cameraRayDifferentialX = get_camera_ray(x + 1, (uint32_t)y);
-				Ray cameraRayDifferentialY = get_camera_ray(x, (uint32_t)y + 1);
-	
-				cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
-	
-				//get color of pixel
-				vec3 color = li(prng, scene, cameraRay);
-	
-				//write color to given buffer
-				color.r = std::max(std::min(color.r, 1.0f), 0.0f);
-				color.g = std::max(std::min(color.g, 1.0f), 0.0f);
-				color.b = std::max(std::min(color.b, 1.0f), 0.0f);
-				color = linear_to_srgb(color);
-	
-				writePixel(x, (uint32_t)y, color);
-			}
-	
-			//decrement threads rendering, notify main thread
-			if(threadsRendering.fetch_sub(1) == 1)
-				displayCVmain.notify_one();
+			std::unique_lock<std::mutex> lock(displayMutex);
+			displayCV.wait(lock, [&]{ return !shouldDisplay; });
 		}
+
+		//increment threads rendering
+		threadsRendering.fetch_add(1);
+		
+		for(int32_t y = group.endY; y >= (int32_t)group.startY; y--)
+		for(uint32_t x = group.startX; x <= group.endX; x++)
+		{
+			//generate ray for current pixel
+			Ray cameraRay = get_camera_ray(x, (uint32_t)y);
+			Ray cameraRayDifferentialX = get_camera_ray(x + 1, (uint32_t)y);
+			Ray cameraRayDifferentialY = get_camera_ray(x, (uint32_t)y + 1);
+
+			cameraRay = Ray(cameraRay, cameraRayDifferentialX, cameraRayDifferentialY);
+
+			//get color of pixel
+			vec3 color = li(prng, scene, cameraRay);
+
+			//write color to given buffer
+			color.r = std::max(std::min(color.r, 1.0f), 0.0f);
+			color.g = std::max(std::min(color.g, 1.0f), 0.0f);
+			color.b = std::max(std::min(color.b, 1.0f), 0.0f);
+			color = linear_to_srgb(color);
+
+			writePixel(x, (uint32_t)y, color);
+		}
+
+		//decrement threads rendering, notify main thread
+		if(threadsRendering.fetch_sub(1) == 1)
+			displayCVmain.notify_one();
 	};
 
 	//start thread groups, display periodically:

@@ -11,6 +11,7 @@
 #include <memory>
 #include <vector>
 #include <unordered_map>
+#include <immintrin.h>
 #include "fr_ray.hpp"
 #include "fr_globals.hpp"
 #include "fr_raycast_info.hpp"
@@ -79,7 +80,20 @@ private:
 
 	void vert_attribs_setup();
 
+	//-------------------------------------------//
+	//INTERSECTION ROUTINES:
+
+	struct IntersectTriangleResultSIMD
+	{
+		__m256i hit;
+
+		__m256 t;
+		__m256 u;
+		__m256 v;
+	};
+
 	static bool intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
+	static IntersectTriangleResultSIMD intersect_triangles_simd(const Ray& ray, const vec3 (&v0)[8], const vec3 (&v1)[8], const vec3 (&v2)[8]);
 	static void intersect_triangle_no_bounds_check(const Ray& ray, const vec3& v0, const vec3& v1, const vec3& v2, float& t, float& u, float& v);
 
 	bool test_alpha_mask(std::shared_ptr<const Texture<float>> alphaMask, uint32_t idx0, uint32_t idx1, uint32_t idx2, float b0, float b1) const;
@@ -125,6 +139,10 @@ private:
 	                            uint32_t numTris, uint32_t* tris, uint32_t depth, 
 								const std::unique_ptr<KDtreeBoundEdge[]> boundEdges[3],
 								uint32_t* trisBelow, uint32_t* trisAbove);
+
+	bool kdtree_intersect_leaf_node(const KDtreeNode* node, const Ray& ray, const std::shared_ptr<const Texture<float>>& alphaMask,
+	                                float& tMin, uint32_t& minIdx0, uint32_t& minIdx1, uint32_t& minIdx2,
+	                                vec3& minV0, vec3& minV1, vec3& minV2, float& minB0, float& minB1) const;
 
 	bound3 m_kdTreeBounds;
 	std::unique_ptr<KDtreeNode[]> m_kdTree;

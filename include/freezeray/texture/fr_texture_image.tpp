@@ -13,23 +13,18 @@ template<typename T, typename Tmemory, typename Tprocessing>
 TextureImage<T, Tmemory, Tprocessing>::TextureImage(Image<Tmemory> image, TextureRepeatMode repeatMode, T multiplier) : 
 	m_repeatMode(repeatMode), m_multiplier(multiplier)
 {
-	//validate input:
-	//---------------
-	if(image.width == 0 || image.height == 0)
-		throw std::invalid_argument("dimensions cannot be 0");
-
 	//determine if sizes are power of 2, resize if not:
 	//---------------
 	bool isPowerOf2 = true;
 
-	uint32_t widthTemp = image.width;
+	uint32_t widthTemp = image.get_width();
 	while(widthTemp != 1)
 	{
 		isPowerOf2 = isPowerOf2 && !(widthTemp & 1);
 		widthTemp >>= 1;
 	}
 
-	uint32_t heightTemp = image.height;
+	uint32_t heightTemp = image.get_height();
 	while(heightTemp != 1)
 	{
 		isPowerOf2 = isPowerOf2 && !(heightTemp & 1);
@@ -43,7 +38,7 @@ TextureImage<T, Tmemory, Tprocessing>::TextureImage(Image<Tmemory> image, Textur
 
 	//construct mip pyramid:
 	//---------------
-	uint32_t maxRes = std::max(image.width, image.height);
+	uint32_t maxRes = std::max(image.get_width(), image.get_width());
 	uint32_t numLevels = 1;
 	while(maxRes != 1)
 	{
@@ -53,10 +48,10 @@ TextureImage<T, Tmemory, Tprocessing>::TextureImage(Image<Tmemory> image, Textur
 
 	for(uint32_t i = 1; i < numLevels; i++)
 	{
-		uint32_t levelWidth  = std::max(1u, m_mipPyramid[i - 1].width  / 2);
-		uint32_t levelHeight = std::max(1u, m_mipPyramid[i - 1].height / 2);
+		uint32_t levelWidth  = std::max(1u, m_mipPyramid[i - 1].get_width()  / 2);
+		uint32_t levelHeight = std::max(1u, m_mipPyramid[i - 1].get_height() / 2);
 
-		std::shared_ptr<Tmemory[]> levelImage = std::shared_ptr<Tmemory[]>(new Tmemory[levelWidth * levelHeight]);
+		Image<Tmemory> levelImage(levelWidth, levelHeight, nullptr);
 		
 		for(int32_t y = 0; y < (int32_t)levelHeight; y++)
 		for(int32_t x = 0; x < (int32_t)levelWidth; x++)
@@ -66,11 +61,13 @@ TextureImage<T, Tmemory, Tprocessing>::TextureImage(Image<Tmemory> image, Textur
 				get_texel_processing(i - 1, 2 * x, 2 * y + 1) + get_texel_processing(i - 1, 2 * x + 1, 2 * y + 1)
 			) / 4.0f;
 
-			convert_to_texture_memory(sample, levelImage[x + levelWidth * y]);
+			Tmemory sampleMem;
+			convert_to_texture_memory(sample, sampleMem);
 
+			levelImage.put(x, y, sampleMem);
 		}
 		
-		m_mipPyramid.push_back({ levelWidth, levelHeight, levelImage });
+		m_mipPyramid.push_back(levelImage);
 	}
 }
 
@@ -155,10 +152,7 @@ std::shared_ptr<TextureImage<T, Tmemory, Tprocessing>> TextureImage<T, Tmemory, 
 		heightTemp >>= 1;
 	}
 
-	Image<Tmemory> image;
-	image.width = width;
-	image.height = height;
-	image.buf = buf;
+	Image<Tmemory> image(width, height, buf);
 
 	if(!isPowerOf2)
 		image = resize_to_power_of_2(image, repeatMode);
@@ -190,19 +184,21 @@ inline T TextureImage<T, Tmemory, Tprocessing>::get_texel(uint32_t level, int32_
 	switch(m_repeatMode)
 	{
 	case TextureRepeatMode::REPEAT:
-		u = (u % image.width  + image.width ) % image.width;
-		v = (v % image.height + image.height) % image.height;
+		u = (u % image.get_width()  + image.get_width() ) % image.get_width();
+		v = (v % image.get_height() + image.get_height()) % image.get_height();
 		break;
 	case TextureRepeatMode::CLAMP_TO_EDGE:
-		u = std::min(std::max(u, 0), (int32_t)image.width  - 1);
-		v = std::min(std::max(v, 0), (int32_t)image.height - 1);
+		u = std::min(std::max(u, 0), (int32_t)image.get_width()  - 1);
+		v = std::min(std::max(v, 0), (int32_t)image.get_height() - 1);
 		break;
 	default:
 		throw std::invalid_argument("invalid repeat mode");
 	}
 
+	Tmemory sampleMem = image.get(u, v);
+
 	T sample;
-	convert_from_texture_memory(image.buf[u + image.width * v], sample);
+	convert_from_texture_memory(sampleMem, sample);
 
 	return sample;
 }
@@ -211,9 +207,11 @@ template<typename T, typename Tmemory, typename Tprocessing>
 inline Tprocessing TextureImage<T, Tmemory, Tprocessing>::get_texel_processing(uint32_t level, int32_t u, int32_t v) const
 {
 	const Image<Tmemory>& image = m_mipPyramid[level];
+	
+	Tmemory sampleMem = image.get(u, v);
 
 	Tprocessing sample;
-	convert_from_texture_memory(image.buf[u + image.width * v], sample);
+	convert_from_texture_memory(sampleMem, sample);
 
 	return sample;
 }
@@ -221,8 +219,8 @@ inline Tprocessing TextureImage<T, Tmemory, Tprocessing>::get_texel_processing(u
 template<typename T, typename Tmemory, typename Tprocessing>
 inline T TextureImage<T, Tmemory, Tprocessing>::bilinear(uint32_t level, const vec2& uv) const
 {
-	float u = uv.x * m_mipPyramid[level].width  - 0.5f;
-	float v = uv.y * m_mipPyramid[level].height - 0.5f;
+	float u = uv.x * m_mipPyramid[level].get_width()  - 0.5f;
+	float v = uv.y * m_mipPyramid[level].get_height() - 0.5f;
 
 	int32_t u0 = (int32_t)std::floor(u);
 	int32_t v0 = (int32_t)std::floor(v);
@@ -242,21 +240,21 @@ Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image
 	//compute power-of-2 dims:
 	//---------------
 	uint32_t newWidth = 1;
-	while(newWidth < image.width)
+	while(newWidth < image.get_width())
 		newWidth *= 2;
 
 	uint32_t newHeight = 1;
-	while(newHeight < image.height)
+	while(newHeight < image.get_height())
 		newHeight *= 2;
 
 	//resample in x direction:
 	//---------------
-	auto resamplingWeightsX = compute_resampling_weights(image.width, newWidth);
+	auto resamplingWeightsX = compute_resampling_weights(image.get_width(), newWidth);
 	std::unique_ptr<int32_t[]>& firstTexelX = resamplingWeightsX.first;
 	std::unique_ptr<float[]>& weightsX = resamplingWeightsX.second;
 
-	std::shared_ptr<Tmemory[]> resampledX = std::shared_ptr<Tmemory[]>(new Tmemory[newWidth * image.height]);
-	for(uint32_t y = 0; y < image.height; y++)
+	std::shared_ptr<Tmemory[]> resampledX = std::shared_ptr<Tmemory[]>(new Tmemory[newWidth * image.get_height()]);
+	for(uint32_t y = 0; y < image.get_height(); y++)
 	for(uint32_t x = 0; x < newWidth; x++)
 	{
 		Tprocessing val(0.0f);
@@ -267,16 +265,15 @@ Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image
 			switch(repeatMode)
 			{
 			case TextureRepeatMode::REPEAT:
-				sampleX %= image.width;
+				sampleX %= image.get_width();
 				break;
 			case TextureRepeatMode::CLAMP_TO_EDGE:
-				sampleX = std::min(std::max(sampleX, 0), (int32_t)image.width - 1);
+				sampleX = std::min(std::max(sampleX, 0), (int32_t)image.get_width() - 1);
 				break;
 			}
 
-			uint32_t sampleIdx = sampleX + image.width * y;
 			Tprocessing sample;
-			convert_from_texture_memory(image.buf[sampleIdx], sample);
+			convert_from_texture_memory(image.get(sampleX, y), sample);
 
 			val = val + weightsX[x * 4 + i] * sample;
 		}
@@ -289,11 +286,11 @@ Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image
 
 	//resample in y direction:
 	//---------------
-	auto resamplingWeightsY = compute_resampling_weights(image.height, newHeight);
+	auto resamplingWeightsY = compute_resampling_weights(image.get_height(), newHeight);
 	std::unique_ptr<int32_t[]>& firstTexelY = resamplingWeightsY.first;
 	std::unique_ptr<float[]>& weightsY = resamplingWeightsY.second;	
 
-	std::shared_ptr<Tmemory[]> resampledY = std::shared_ptr<Tmemory[]>(new Tmemory[newWidth * newHeight]);
+	Image<Tmemory> resampledY(newWidth, newHeight, nullptr);
 	for(uint32_t x = 0; x < newWidth; x++)
 	for(uint32_t y = 0; y < newHeight; y++)
 	{
@@ -305,10 +302,10 @@ Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image
 			switch(repeatMode)
 			{
 			case TextureRepeatMode::REPEAT:
-				sampleY %= image.height;
+				sampleY %= image.get_height();
 				break;
 			case TextureRepeatMode::CLAMP_TO_EDGE:
-				sampleY = std::min(std::max(sampleY, 0), (int32_t)image.height - 1);
+				sampleY = std::min(std::max(sampleY, 0), (int32_t)image.get_height() - 1);
 				break;
 			}
 
@@ -319,15 +316,15 @@ Image<Tmemory> TextureImage<T, Tmemory, Tprocessing>::resize_to_power_of_2(Image
 			val = val + Tprocessing(weightsY[y * 4 + i]) * sample;
 		}
 
-		uint32_t idx = x + newWidth * y;
 		Tmemory mem;
 		convert_to_texture_memory(val, mem);
-		resampledY[idx] = mem;
+
+		resampledY.put(x, y, mem);
 	}
 
 	//return:
 	//---------------
-	return { newWidth, newHeight, resampledY };
+	return resampledY;
 }
 
 template<typename T, typename Tmemory, typename Tprocessing>

@@ -244,36 +244,12 @@ bool Mesh::intersect(const Ray& ray, std::shared_ptr<const Texture<float>> alpha
 		}
 		else
 		{
-			uint32_t numTris = node->get_num_tris();
-			for(uint32_t i = 0; i < numTris; i++)
-			{
-				uint32_t triIdx = m_kdTreeTriIndices[node->get_tri_indices_offset() + i] * 3;
-				uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
-				uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
-				uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
-			
-				const vec3& v0 = *reinterpret_cast<const vec3*>(&verts[idx0 + m_vertPosOffset]);
-				const vec3& v1 = *reinterpret_cast<const vec3*>(&verts[idx1 + m_vertPosOffset]);
-				const vec3& v2 = *reinterpret_cast<const vec3*>(&verts[idx2 + m_vertPosOffset]);
-		
-				float t;
-				float b0, b1; //barycentric coordinates
-				if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < tMin &&
-				   test_alpha_mask(alphaMask, idx0, idx1, idx2, b0, b1))
-				{
-					hit |= true;
-		
-					tMin = t;
-					minIdx0 = idx0;
-					minIdx1 = idx1;
-					minIdx2 = idx2;
-					minV0 = v0;
-					minV1 = v1;
-					minV2 = v2;
-					minB0 = b0;
-					minB1 = b1;
-				}
-			}
+			hit |= kdtree_intersect_leaf_node(
+				node, ray, alphaMask, tMin, 
+				minIdx0, minIdx1, minIdx2,
+				minV0, minV1, minV2,
+				minB0, minB1
+			);
 
 			if(toVisitPos > 0)
 			{
@@ -464,6 +440,86 @@ bool Mesh::intersect_triangle(const Ray& ray, const vec3& v0, const vec3& v1, co
 
 	t = dot(v0v2, qvec) * invDet;
 	return t > FR_EPSILON;
+}
+
+Mesh::IntersectTriangleResultSIMD Mesh::intersect_triangles_simd(const Ray& ray, const vec3 (&v0)[8], const vec3 (&v1)[8], const vec3 (&v2)[8])
+{
+	//load into SIMD registers:
+	//---------------	
+	__m256 roX = _mm256_set1_ps(ray.origin().x);
+	__m256 roY = _mm256_set1_ps(ray.origin().y);
+	__m256 roZ = _mm256_set1_ps(ray.origin().z);
+
+	__m256 rdX = _mm256_set1_ps(ray.direction().x);
+	__m256 rdY = _mm256_set1_ps(ray.direction().y);
+	__m256 rdZ = _mm256_set1_ps(ray.direction().z);
+
+	__m256 v0x = _mm256_setr_ps(v0[0].x, v0[1].x, v0[2].x, v0[3].x, v0[4].x, v0[5].x, v0[6].x, v0[7].x);
+	__m256 v0y = _mm256_setr_ps(v0[0].y, v0[1].y, v0[2].y, v0[3].y, v0[4].y, v0[5].y, v0[6].y, v0[7].y);
+	__m256 v0z = _mm256_setr_ps(v0[0].z, v0[1].z, v0[2].z, v0[3].z, v0[4].z, v0[5].z, v0[6].z, v0[7].z);
+	__m256 v1x = _mm256_setr_ps(v1[0].x, v1[1].x, v1[2].x, v1[3].x, v1[4].x, v1[5].x, v1[6].x, v1[7].x);
+	__m256 v1y = _mm256_setr_ps(v1[0].y, v1[1].y, v1[2].y, v1[3].y, v1[4].y, v1[5].y, v1[6].y, v1[7].y);
+	__m256 v1z = _mm256_setr_ps(v1[0].z, v1[1].z, v1[2].z, v1[3].z, v1[4].z, v1[5].z, v1[6].z, v1[7].z);
+	__m256 v2x = _mm256_setr_ps(v2[0].x, v2[1].x, v2[2].x, v2[3].x, v2[4].x, v2[5].x, v2[6].x, v2[7].x);
+	__m256 v2y = _mm256_setr_ps(v2[0].y, v2[1].y, v2[2].y, v2[3].y, v2[4].y, v2[5].y, v2[6].y, v2[7].y);
+	__m256 v2z = _mm256_setr_ps(v2[0].z, v2[1].z, v2[2].z, v2[3].z, v2[4].z, v2[5].z, v2[6].z, v2[7].z);
+
+	//compute intersections:
+	//---------------
+	__m256 v0v1x = _mm256_sub_ps(v1x, v0x);
+	__m256 v0v1y = _mm256_sub_ps(v1y, v0y);
+	__m256 v0v1z = _mm256_sub_ps(v1z, v0z);
+
+	__m256 v0v2x = _mm256_sub_ps(v2x, v0x);
+	__m256 v0v2y = _mm256_sub_ps(v2y, v0y);
+	__m256 v0v2z = _mm256_sub_ps(v2z, v0z);
+
+	__m256 pvecX = _mm256_sub_ps(_mm256_mul_ps(rdY, v0v2z), _mm256_mul_ps(rdZ, v0v2y));
+	__m256 pvecY = _mm256_sub_ps(_mm256_mul_ps(rdZ, v0v2x), _mm256_mul_ps(rdX, v0v2z));
+	__m256 pvecZ = _mm256_sub_ps(_mm256_mul_ps(rdX, v0v2y), _mm256_mul_ps(rdY, v0v2x));
+
+	__m256 det = _mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(v0v1x, pvecX), _mm256_mul_ps(v0v1y, pvecY)), _mm256_mul_ps(v0v1z, pvecZ));
+	__m256 absDet = _mm256_andnot_ps(_mm256_set1_ps(-0.0f), det);
+	__m256 detMask = _mm256_cmp_ps(absDet, _mm256_set1_ps(std::numeric_limits<float>::epsilon()), _CMP_LT_OS);
+	__m256 invDet = _mm256_div_ps(_mm256_set1_ps(1.0f), det);
+
+	__m256 tvecX = _mm256_sub_ps(roX, v0x);
+	__m256 tvecY = _mm256_sub_ps(roY, v0y);
+	__m256 tvecZ = _mm256_sub_ps(roZ, v0z);
+
+	__m256 u = _mm256_mul_ps(
+		_mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(tvecX, pvecX), _mm256_mul_ps(tvecY, pvecY)), _mm256_mul_ps(tvecZ, pvecZ)),
+		invDet
+	);
+	__m256 uMask = _mm256_or_ps(_mm256_cmp_ps(u, _mm256_setzero_ps(), _CMP_LT_OS), _mm256_cmp_ps(u, _mm256_set1_ps(1.0f), _CMP_GT_OS));
+
+	__m256 qvecX = _mm256_sub_ps(_mm256_mul_ps(tvecY, v0v1z), _mm256_mul_ps(tvecZ, v0v1y));
+	__m256 qvecY = _mm256_sub_ps(_mm256_mul_ps(tvecZ, v0v1x), _mm256_mul_ps(tvecX, v0v1z));
+	__m256 qvecZ = _mm256_sub_ps(_mm256_mul_ps(tvecX, v0v1y), _mm256_mul_ps(tvecY, v0v1x));	
+
+	__m256 v = _mm256_mul_ps(
+		_mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(rdX, qvecX), _mm256_mul_ps(rdY, qvecY)), _mm256_mul_ps(rdZ, qvecZ)),
+		invDet
+	);
+	__m256 vMask = _mm256_or_ps(_mm256_cmp_ps(v, _mm256_setzero_ps(), _CMP_LT_OS), _mm256_cmp_ps(_mm256_add_ps(u, v), _mm256_set1_ps(1.0f), _CMP_GT_OS));
+
+	__m256 t = _mm256_mul_ps(
+		_mm256_add_ps(_mm256_add_ps(_mm256_mul_ps(v0v2x, qvecX), _mm256_mul_ps(v0v2y, qvecY)), _mm256_mul_ps(v0v2z, qvecZ)),
+		invDet
+	);
+	__m256 tMask = _mm256_cmp_ps(t, _mm256_set1_ps(FR_EPSILON), _CMP_LE_OS);
+
+	__m256 hitMask = _mm256_or_ps(_mm256_or_ps(_mm256_or_ps(detMask, uMask), vMask), tMask);
+
+	//return:
+	//---------------
+	IntersectTriangleResultSIMD result;
+	result.hit = _mm256_castps_si256(_mm256_xor_ps(hitMask, _mm256_set1_ps(-0.0f)));
+	result.t = t;
+	result.u = u;
+	result.v = v;
+	
+	return result;
 }
 
 bool Mesh::test_alpha_mask(std::shared_ptr<const Texture<float>> alphaMask, uint32_t idx0, uint32_t idx1, uint32_t idx2, float b0, float b1) const
@@ -833,6 +889,99 @@ void Mesh::kdtree_build_recursive(uint32_t idx, uint32_t* treeSize, uint32_t* tr
 	//init node:
 	//---------------
 	m_kdTree[idx].init_interior(bestAxis, aboveIdx, splitPos);
+}
+
+bool Mesh::kdtree_intersect_leaf_node(const KDtreeNode* node, const Ray& ray, const std::shared_ptr<const Texture<float>>& alphaMask, 
+                                      float& tMin, uint32_t& minIdx0, uint32_t& minIdx1, uint32_t& minIdx2,
+                                      vec3& minV0, vec3& minV1, vec3& minV2, float& minB0, float& minB1) const
+{
+	bool hit = false;
+	
+	uint32_t numTris = node->get_num_tris();
+	uint32_t numBatches = numTris / 8;
+	uint32_t remainingTris = numTris % 8;
+
+	//process in batches of 4 with SIMD:
+	//---------------
+	for(uint32_t batch = 0; batch < numBatches; batch++) 
+	{
+		uint32_t baseIdx = batch * 8;
+		
+		vec3 v0[8], v1[8], v2[8];
+		uint32_t idx0[8], idx1[8], idx2[8];
+		
+		for(uint32_t i = 0; i < 8; i++) 
+		{
+			uint32_t triIdx = m_kdTreeTriIndices[node->get_tri_indices_offset() + baseIdx + i] * 3;
+			idx0[i] = m_indices[triIdx + 0] * m_vertStride;
+			idx1[i] = m_indices[triIdx + 1] * m_vertStride;
+			idx2[i] = m_indices[triIdx + 2] * m_vertStride;
+			
+			v0[i] = *reinterpret_cast<const vec3*>(&m_verts[idx0[i] + m_vertPosOffset]);
+			v1[i] = *reinterpret_cast<const vec3*>(&m_verts[idx1[i] + m_vertPosOffset]);
+			v2[i] = *reinterpret_cast<const vec3*>(&m_verts[idx2[i] + m_vertPosOffset]);
+		}
+		
+		IntersectTriangleResultSIMD results = intersect_triangles_simd(ray, v0, v1, v2);
+		
+		float tVals[8], uVals[8], vVals[8];
+		_mm256_storeu_ps(tVals, results.t);
+		_mm256_storeu_ps(uVals, results.u);
+		_mm256_storeu_ps(vVals, results.v);
+		
+		int hitMask = _mm256_movemask_ps(_mm256_castsi256_ps(results.hit));
+
+		for(uint32_t i = 0; i < 8; i++) 
+		{
+			if((hitMask & (1 << i)) && tVals[i] < tMin && 
+			   test_alpha_mask(alphaMask, idx0[i], idx1[i], idx2[i], uVals[i], vVals[i])) 
+			{
+				hit = true;
+				tMin = tVals[i];
+				minIdx0 = idx0[i];
+				minIdx1 = idx1[i];
+				minIdx2 = idx2[i];
+				minV0 = v0[i];
+				minV1 = v1[i];
+				minV2 = v2[i];
+				minB0 = uVals[i];
+				minB1 = vVals[i];
+			}
+		}
+	}
+
+	//process in batches of 4 with SIMD:
+	//---------------
+	for(uint32_t i = numBatches * 8; i < numTris; i++) 
+	{
+		uint32_t triIdx = m_kdTreeTriIndices[node->get_tri_indices_offset() + i] * 3;
+		uint32_t idx0 = m_indices[triIdx + 0] * m_vertStride;
+		uint32_t idx1 = m_indices[triIdx + 1] * m_vertStride;
+		uint32_t idx2 = m_indices[triIdx + 2] * m_vertStride;
+		
+		const vec3& v0 = *reinterpret_cast<const vec3*>(&m_verts[idx0 + m_vertPosOffset]);
+		const vec3& v1 = *reinterpret_cast<const vec3*>(&m_verts[idx1 + m_vertPosOffset]);
+		const vec3& v2 = *reinterpret_cast<const vec3*>(&m_verts[idx2 + m_vertPosOffset]);
+		
+		float t;
+		float b0, b1;
+		if(intersect_triangle(ray, v0, v1, v2, t, b0, b1) && t < tMin &&
+		   test_alpha_mask(alphaMask, idx0, idx1, idx2, b0, b1)) 
+		{
+			hit = true;
+			tMin = t;
+			minIdx0 = idx0;
+			minIdx1 = idx1;
+			minIdx2 = idx2;
+			minV0 = v0;
+			minV1 = v1;
+			minV2 = v2;
+			minB0 = b0;
+			minB1 = b1;
+		}
+	}
+
+	return hit;
 }
 
 //-------------------------------------------//
