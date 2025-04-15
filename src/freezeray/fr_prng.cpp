@@ -35,41 +35,24 @@ vec3 PRNG::rand3f()
 
 vec3 PRNG::rand_sphere()
 {
-	vec3 randUnitSphere;
-	while(true)
-	{
-		randUnitSphere = rand3f();
-
-		float lenSqr = dot(randUnitSphere, randUnitSphere);
-		if(lenSqr > FR_EPSILON && lenSqr <= 1.0f)
-		{
-			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
-			break;
-		}
-	}
-
-	return randUnitSphere;
+	float theta = 2.0f * FR_PI * randf();
+	float phi = std::acosf(1.0f - 2.0f * randf());
+	
+	float sin_phi = std::sinf(phi);
+	return vec3(
+		std::cosf(theta) * sin_phi,
+		std::sinf(theta) * sin_phi,
+		std::cosf(phi)
+	);
 }
 
 vec3 PRNG::rand_hemisphere(const vec3& normal)
 {
-	vec3 randUnitSphere;
-	while(true)
-	{
-		randUnitSphere = rand3f();
-
-		float lenSqr = dot(randUnitSphere, randUnitSphere);
-		if(lenSqr > FR_EPSILON && lenSqr <= 1.0f)
-		{
-			randUnitSphere = randUnitSphere / std::sqrtf(lenSqr);
-			break;
-		}
-	}
-
-	if(dot(randUnitSphere, normal) < 0.0f)
-		randUnitSphere = randUnitSphere * -1.0f;
-
-	return randUnitSphere;
+	vec3 spherePoint = rand_sphere();
+	if(dot(spherePoint, normal) < 0.0f)
+		spherePoint = -1.0f * spherePoint;
+		
+	return spherePoint;
 }
 
 }; //namespace fr
