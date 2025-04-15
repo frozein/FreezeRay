@@ -31,10 +31,10 @@ ExampleScene example_cornell_box()
 
 	mat4 scaleMat = scale(vec3(1.0f + FR_EPSILON, 1.0f + FR_EPSILON, 1.0f + FR_EPSILON));
 
-	std::shared_ptr<const fr::Object> leftWallObj = std::make_shared<fr::Object>(squareMesh, redMat);
+	std::shared_ptr<const fr::Object> leftWallObj = std::make_shared<fr::Object>(squareMesh, greenMat);
 	mat4 leftWallTransform = translate(vec3(-0.5f, 0.0f, 0.0f)) * rotate(vec3(0.0f, 0.0f, 1.0f), -90.0f) * scaleMat;
 
-	std::shared_ptr<const fr::Object> rightWallObj = std::make_shared<fr::Object>(squareMesh, greenMat);
+	std::shared_ptr<const fr::Object> rightWallObj = std::make_shared<fr::Object>(squareMesh, redMat);
 	mat4 rightWallTransform = translate(vec3(0.5f, 0.0f, 0.0f)) * rotate(vec3(0.0f, 0.0f, 1.0f), 90.0f) * scaleMat;
 
 	std::shared_ptr<const fr::Object> backWallObj = std::make_shared<fr::Object>(squareMesh, whiteMat);
@@ -97,7 +97,7 @@ ExampleScene example_cornell_box()
 	//define camera:
 	//---------------
 	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(0.0f, 0.0f, 2.5f), 
+		vec3(0.0f, 0.0f, 1.85f), 
 		normalize(vec3(0.0f, 0.0f, -1.0f)),
 		vec3(0.0f, 1.0f, 0.0f),
 		40.0f,

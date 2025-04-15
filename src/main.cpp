@@ -5,6 +5,7 @@
 #include "example_scene.hpp"
 #include "freezeray/renderer/fr_renderer_path.hpp"
 #include "freezeray/renderer/fr_renderer_bidirectional.hpp"
+#include "freezeray/texture/stb_image.h"
 #include "stb_image_write.h"
 
 //-------------------------------------------//
@@ -21,8 +22,8 @@ int main(int argc, char** argv)
 
 	//load scene:
 	//---------------
-	ExampleScene scene = example_material_demo("assets/skyboxes/noon_grass_4k.hdr");
-	//ExampleScene scene = example_cornell_box();
+	//ExampleScene scene = example_material_demo("assets/skyboxes/noon_grass_4k.hdr");
+	ExampleScene scene = example_cornell_box();
 	//ExampleScene scene = example_sponza();
 	//ExampleScene scene = example_san_miguel();
 
@@ -62,12 +63,12 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
 		10,
-		100,
+		64,
 		true,
 		true
 	);
@@ -114,12 +115,61 @@ int main(int argc, char** argv)
 	//---------------
 	stbi_write_png(argv[1], scene.windowWidth, scene.windowHeight, 4, outTex.get(), scene.windowWidth * sizeof(uint32_t));
 
-	//print total rendering time and continue updating window until closed:
+	//print total rendering time:
 	//---------------
 	unsigned int endTime = SDL_GetTicks();
 
 	std::cout << "RENDER TIME: " << (endTime - startTime) / 1000.0f << "s" << std::endl;
 
+	//compute MSE if output texture given:
+	//---------------
+	if(argc >= 3)
+	{
+		uint32_t width;
+		uint32_t height;
+		uint32_t channels;
+		uint8_t* refImage = stbi_load(argv[2], (int*)&width, (int*)&height, (int*)&channels, 4);
+
+		if(!refImage) 
+		{
+			std::cout << "error loading reference image: " << argv[2] << std::endl;
+			return -1;
+		}
+		
+		if(width != scene.windowWidth || height != scene.windowHeight) 
+		{
+			std::cout << "reference image's dimensions to not match" << std::endl;
+			return -1;
+		}
+		
+		double sumSquaredError = 0.0;
+		for(uint32_t y = 0; y < scene.windowHeight; y++)
+		for(uint32_t x = 0; x < scene.windowWidth; x++) 
+		{
+			uint32_t idx = x + y * width;
+			
+			uint8_t* refPixel = &refImage[idx * 4];
+			
+			uint8_t renderedR = outTex[idx] & 0xFF;
+			uint8_t renderedG = (outTex[idx] >> 8) & 0xFF;
+			uint8_t renderedB = (outTex[idx] >> 16) & 0xFF;
+			uint8_t renderedA = (outTex[idx] >> 24) & 0xFF;
+			
+			double diffR = refPixel[0] - renderedR;
+			double diffG = refPixel[1] - renderedG;
+			double diffB = refPixel[2] - renderedB;
+			
+			sumSquaredError += (diffR * diffR + diffG * diffG + diffB * diffB) / 3.0;
+		}
+		
+		double mse = sumSquaredError / (width * height);
+		std::cout << "MSE: " << mse << std::endl;
+
+		stbi_image_free(refImage);
+	}
+
+	//continue updating window:
+	//---------------
 	while(true)
 	{
 		SDL_Event event;
