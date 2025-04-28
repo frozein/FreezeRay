@@ -65,7 +65,7 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	/*std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
+	/*std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 		scene.windowWidth,
 		scene.windowHeight,
 		10,
-		450
+		50
 	);
 
 	//start rendering:

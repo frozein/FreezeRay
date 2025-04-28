@@ -23,7 +23,7 @@ ExampleScene example_sponza()
 		"assets/models/sponza/sponza.obj",
 		"assets/models/sponza/sponza.mtl"
 	);
-	mat4 sponzaTransform = mat4_identity();
+	mat4 sponzaTransform = scale(vec3(0.1f));
 
 	std::vector<fr::ObjectReference> objects = {
 		{sponzaObj, sponzaTransform}
@@ -39,17 +39,17 @@ ExampleScene example_sponza()
 
 
 	const vec3 bunnyColors[3] = {vec3(1.0f, 0.1f, 0.1f), vec3(0.1f, 1.0f, 0.1f), vec3(0.1f, 0.1f, 1.0f)};
-	const float bunnyPositions[3] = {0.0f, -400.0f, -800.0f};
+	const float bunnyPositions[3] = {0.0f, -40.0f, -80.0f};
 	std::shared_ptr<const fr::Mesh> bunnyMesh = fr::Mesh::from_obj("assets/models/bunny.obj")[0];
 
-	mat4 bunnyTransformBase = rotate(vec3(0.0f, 1.0f, 0.0f), 90.0f) * scale(vec3(100.0f));
+	mat4 bunnyTransformBase = rotate(vec3(0.0f, 1.0f, 0.0f), 90.0f) * scale(vec3(10.0f));
 
 	for(uint32_t i = 0; i < 3; i++)
 	{
-		mat4 topLeftTransform  = translate(vec3(bunnyPositions[i], 450.0f, -400.0f)) * bunnyTransformBase;
-		mat4 topRightTransform = translate(vec3(bunnyPositions[i], 450.0f,  400.0f)) * bunnyTransformBase;
-		mat4 botLeftTransform  = translate(vec3(bunnyPositions[i],   0.0f, -400.0f)) * bunnyTransformBase;
-		mat4 botRightTransform = translate(vec3(bunnyPositions[i],   0.0f,  400.0f)) * bunnyTransformBase;
+		mat4 topLeftTransform  = translate(vec3(bunnyPositions[i], 45.0f, -40.0f)) * bunnyTransformBase;
+		mat4 topRightTransform = translate(vec3(bunnyPositions[i], 45.0f,  40.0f)) * bunnyTransformBase;
+		mat4 botLeftTransform  = translate(vec3(bunnyPositions[i],  0.0f, -40.0f)) * bunnyTransformBase;
+		mat4 botRightTransform = translate(vec3(bunnyPositions[i],  0.0f,  40.0f)) * bunnyTransformBase;
 
 		lightList.push_back(std::make_unique<fr::LightArea>(bunnyMesh, topLeftTransform , bunnyColors[i]));
 		lightList.push_back(std::make_unique<fr::LightArea>(bunnyMesh, topRightTransform, bunnyColors[i]));
@@ -57,8 +57,8 @@ ExampleScene example_sponza()
 		lightList.push_back(std::make_unique<fr::LightArea>(bunnyMesh, botRightTransform, bunnyColors[i]));
 	}
 
-	mat4 centerTopBunnyTransform = translate(vec3(-1300.0f, 450.0f, -50.0f)) * bunnyTransformBase;
-	mat4 centerBotBunnyTransform = translate(vec3(-1300.0f,   0.0f, -50.0f)) * bunnyTransformBase;
+	mat4 centerTopBunnyTransform = translate(vec3(-130.0f, 45.0f, -5.0f)) * bunnyTransformBase;
+	mat4 centerBotBunnyTransform = translate(vec3(-130.0f,  0.0f, -5.0f)) * bunnyTransformBase;
 	
 	lightList.push_back(std::make_unique<fr::LightArea>(bunnyMesh, centerTopBunnyTransform, vec3(1.0f)));
 	lightList.push_back(std::make_unique<fr::LightArea>(bunnyMesh, centerBotBunnyTransform, vec3(1.0f)));
@@ -70,7 +70,7 @@ ExampleScene example_sponza()
 	//define camera:
 	//---------------
 	std::shared_ptr<const fr::Camera> camera = std::make_shared<fr::Camera>(
-		vec3(500.0f, 700.0f, 0.0f), 
+		vec3(50.0f, 70.0f, 0.0f), 
 		normalize(vec3(-1.0f, -0.2f, -0.2f)), 
 		vec3(0.0f, 1.0f, 0.0f), 
 		60.0f, 
