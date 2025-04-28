@@ -29,9 +29,9 @@ public:
 
 	//renders the entire scene into the given image buffer, calling display occasionally to allow
 	//the current result to be displayed
-	void render(const std::shared_ptr<const Scene>& scene,
-	            std::function<void(uint32_t x, uint32_t y, vec3 color)> writePixel, 
-				std::function<void()> display, uint32_t displayFrequency = 1);
+	virtual void render(const std::shared_ptr<const Scene>& scene,
+	                    std::function<void(uint32_t x, uint32_t y, vec3 color)> writePixel, 
+	                    std::function<void(float progress)> display, uint32_t displayFrequency = 1);
 
 protected:
 	virtual vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const = 0;
@@ -50,8 +50,8 @@ protected:
 	uint32_t m_imageW;
 	uint32_t m_imageH;
 
-private:
 	Ray get_camera_ray(uint32_t x, uint32_t y) const;
+	Ray get_camera_ray(vec2 uv) const;
 };
 
 }; //namespace fr

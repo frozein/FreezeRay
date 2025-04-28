@@ -21,10 +21,10 @@ namespace fr
 class PRNG
 {
 public:
-	PRNG();
+	PRNG(uint32_t seed);
+	PRNG() {}
 
-	uint32_t randi();
-	float randf();
+	virtual float randf();
 	vec2 rand2f();
 	vec3 rand3f();
 	vec3 rand_sphere();
@@ -32,7 +32,6 @@ public:
 
 private:
 	std::mt19937 m_generator;
-	std::uniform_int_distribution<uint32_t> m_distI;
 	std::uniform_real_distribution<float> m_distF;
 };
 

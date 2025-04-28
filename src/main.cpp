@@ -1,10 +1,12 @@
 #include <SDL2/SDL.h>
 #include <iostream>
+#include <iomanip>
 
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "example_scene.hpp"
 #include "freezeray/renderer/fr_renderer_path.hpp"
 #include "freezeray/renderer/fr_renderer_bidirectional.hpp"
+#include "freezeray/renderer/fr_renderer_metropolis.hpp"
 #include "freezeray/texture/stb_image.h"
 #include "stb_image_write.h"
 
@@ -22,10 +24,10 @@ int main(int argc, char** argv)
 
 	//load scene:
 	//---------------
-	ExampleScene scene = example_material_demo("assets/skyboxes/noon_sunny.hdr");
+	//ExampleScene scene = example_material_demo("assets/skyboxes/noon_sunny.hdr");
 	//ExampleScene scene = example_cornell_box();
 	//ExampleScene scene = example_sponza();
-	//ExampleScene scene = example_san_miguel();
+	ExampleScene scene = example_san_miguel();
 
 	//init SDL and create window:
 	//---------------
@@ -63,14 +65,22 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererPath>(
+	/*std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
 		10,
 		64,
-		false,
-		false
+		true,
+		true
+	);*/
+
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererMetropolis>(
+		scene.camera,
+		scene.windowWidth,
+		scene.windowHeight,
+		10,
+		450
 	);
 
 	//start rendering:
@@ -92,7 +102,9 @@ int main(int argc, char** argv)
 		outTex[x + scene.windowWidth * writeY] = writeTex;
 	};
 
-	auto display = [&]() -> void {
+	auto display = [&](float progress) -> void {
+		std::cout << "Rendering... " << std::fixed << std::setprecision(2) << progress * 100.0f << "%\r";
+
 		SDL_UnlockSurface(windowSurface);
 		SDL_UpdateWindowSurface(window);
 		SDL_LockSurface(windowSurface);

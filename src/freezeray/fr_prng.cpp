@@ -7,15 +7,10 @@
 namespace fr
 {
 
-PRNG::PRNG() :
-	m_generator(), m_distI(0, UINT32_MAX), m_distF(0.0f, 1.0f)
+PRNG::PRNG(uint32_t seed) :
+	m_generator(seed), m_distF(0.0f, 1.0f)
 {
 
-}
-
-uint32_t PRNG::randi()
-{
-	return m_distI(m_generator);
 }
 
 float PRNG::randf()

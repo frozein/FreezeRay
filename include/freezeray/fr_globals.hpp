@@ -22,6 +22,8 @@ using namespace qm;
 #define FR_GAMMA 2.2f
 #define FR_INV_GAMMA 0.45454545454545454545f
 
+#define FR_SQRT_2 1.41421356237f
+
 //canonical up direction for local space calculations
 #define FR_UP_DIR vec3(0.0f, 1.0f, 0.0f)
 #define FR_DOWN_DIR vec3(0.0f, -1.0f, 0.0f)

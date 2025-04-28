@@ -8,6 +8,7 @@
 #define FR_RENDERER_BIDIRECTIONAL_H
 
 #include "../fr_renderer.hpp"
+#include <vector>
 
 //-------------------------------------------//
 
@@ -21,7 +22,7 @@ public:
 	                      uint32_t samplesPerPixel, bool importanceSampling, bool multipleImportanceSampling);
 	~RendererBidirectional();
 
-private:
+protected:
 	struct PathVertex
 	{
 		enum class Type
@@ -60,11 +61,6 @@ private:
 	bool m_importanceSampling;
 	bool m_mis;
 
-	vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
-
-	vec3 trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const;
-	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const;
-
 	vec3 connect_subpaths(const std::shared_ptr<const Scene>& scene, const std::shared_ptr<PRNG>& prng, 
 	                      const std::vector<PathVertex>& cameraSubpath, const std::vector<PathVertex>& lightSubpath, 
 	                      uint32_t numCam, uint32_t numLight, PathVertex& sampled) const;
@@ -72,6 +68,14 @@ private:
 	float mis_weight(const std::shared_ptr<const Scene>& scene, std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath,
 	                 PathVertex& sampled, uint32_t s, uint32_t t) const;
 	float uniform_weight(std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath, uint32_t s, uint32_t t) const;
+
+	std::vector<PathVertex> trace_camera_subpath(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, uint32_t depth) const;
+	std::vector<PathVertex> trace_light_subpath(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, uint32_t depth) const;
+
+private:
+	vec3 li(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const override;
+
+	void trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices, uint32_t depth) const;
 };
 
 }; //namespace fr

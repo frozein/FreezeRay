@@ -66,108 +66,47 @@ vec3 RendererBidirectional::li(const std::shared_ptr<PRNG>& prng, const std::sha
 	vec3 li = vec3(0.0f);
 	for(uint32_t i = 0; i < m_samplesPerPixel; i++)
 	{
-		vec3 contrib = trace_bidirectional_path(prng, scene, ray);
-		if(std::isinf(contrib.x) || std::isinf(contrib.y) || std::isinf(contrib.z) ||
-		   std::isnan(contrib.x) || std::isnan(contrib.y) || std::isnan(contrib.z))
+		std::vector<PathVertex> cameraSubpath = trace_camera_subpath(prng, scene, ray, m_maxDepth);
+		std::vector<PathVertex> lightSubpath = trace_light_subpath(prng, scene, ray, m_maxDepth);
+	
+		vec3 l = vec3(0.0f);
+	
+		for(uint32_t numCam   = 2; numCam   <= cameraSubpath.size(); numCam++) //TODO: allow numCam=1
+		for(uint32_t numLight = 0; numLight <= lightSubpath .size(); numLight++)
+		{
+			uint32_t depth = numCam + numLight - 1;
+			if(depth <= 0 || depth > m_maxDepth)
+				continue;
+	
+			PathVertex sampled;
+			vec3 contrib = connect_subpaths(scene, prng, cameraSubpath, lightSubpath, numCam, numLight, sampled);
+	
+			if(contrib != vec3(0.0f))
+			{
+				if(m_mis)
+					l = l + contrib * mis_weight(scene, cameraSubpath, lightSubpath, sampled, numLight, numCam);
+				else
+					l = l + contrib * uniform_weight(cameraSubpath, lightSubpath, numLight, numCam);
+			}
+		}
+
+		if(std::isinf(l.x) || std::isinf(l.y) || std::isinf(l.z) ||
+		   std::isnan(l.x) || std::isnan(l.y) || std::isnan(l.z))
 		   continue;
 
-		li = li + contrib;
+		li = li + l;
 	}
 
 	return li / (float)m_samplesPerPixel;
 }
 
-vec3 RendererBidirectional::trace_bidirectional_path(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray) const
-{
-	//generate camera subpath:
-	//---------------	
-	std::vector<PathVertex> cameraSubpath;
-
-	//TODO: treat the camera properly
-	float cameraPdfPos = 1.0f;
-	float cameraPdfDir = 1.0f;
-	vec3 cameraMult = vec3(1.0f);
-	
-	PathVertex cameraStart = PathVertex::from_camera(m_cam, ray, cameraMult);
-	cameraSubpath.push_back(cameraStart);
-
-	trace_walk(prng, scene, ray, TransportMode::RADIANCE, cameraMult, cameraPdfDir, cameraSubpath);
-
-	//generate light subpath:
-	//---------------
-	std::vector<PathVertex> lightSubpath;
-
-	uint32_t numLights = (uint32_t)scene->get_lights().size();
-	if(numLights == 0)
-		return vec3(0.0f);
-
-	uint32_t lightIdx = prng->randi() % numLights;
-	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
-	float lightPdf = 1.0f / numLights;
-
-	vec3 u1 = prng->rand3f();
-	vec3 u2 = prng->rand3f();
-
-	Ray lightRay;
-	vec3 lightNormal;
-	float lightPdfPos;
-	float lightPdfDir;
-	vec3 le = light->sample_le(u1, u2, lightRay, lightNormal, lightPdfPos, lightPdfDir);
-	if(lightPdfPos > 0.0f && lightPdfDir > 0.0f)
-	{
-		IntersectionInfo lightHit;
-		lightHit.pos = lightRay.origin();
-		lightHit.shadingNormal = lightNormal;
-
-		vec3 lightMult = le * std::abs(dot(lightNormal, lightRay.direction())) / (lightPdf * lightPdfDir * lightPdfPos);
-
-		PathVertex lightStart = PathVertex::from_light(light, lightHit, lightMult, lightPdfPos * lightPdf);
-		lightSubpath.push_back(lightStart);
-
-		trace_walk(prng, scene, lightRay, TransportMode::IMPORTANCE, lightMult, lightPdfDir, lightSubpath);
-
-		if(light->is_infinite())
-		{
-			if(lightSubpath.size() > 1)
-				lightSubpath[1].pdfFwd = lightPdfPos * std::abs(dot(ray.direction(), lightSubpath[1].intersection.shadingNormal));
-
-			lightSubpath[0].pdfFwd = PathVertex::pdf_light_infinite(scene, lightRay.direction());
-		}
-	}
-
-	//connect subpaths:
-	//---------------
-	vec3 l = vec3(0.0f);
-
-	for(uint32_t numCam   = 2; numCam   <= cameraSubpath.size(); numCam++) //TODO: allow numCam=1
-	for(uint32_t numLight = 0; numLight <= lightSubpath .size(); numLight++)
-	{
-		uint32_t depth = numCam + numLight - 1;
-		if(depth <= 0 || depth > m_maxDepth)
-			continue;
-
-		PathVertex sampled;
-		vec3 contrib = connect_subpaths(scene, prng, cameraSubpath, lightSubpath, numCam, numLight, sampled);
-
-		if(contrib != vec3(0.0f))
-		{
-			if(m_mis)
-				l = l + contrib * mis_weight(scene, cameraSubpath, lightSubpath, sampled, numLight, numCam);
-			else
-				l = l + contrib * uniform_weight(cameraSubpath, lightSubpath, numLight, numCam);
-		}
-	}
-
-	return l;
-}
-
-void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices) const
+void RendererBidirectional::trace_walk(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, TransportMode mode, vec3 mult, float pdf, std::vector<PathVertex>& vertices, uint32_t depth) const
 {
 	float pdfFwd = pdf;
 	float pdfRev = 0.0f;
 
 	Ray curRay = ray;
-	for(uint32_t i = 0; i < m_maxDepth; i++)
+	for(uint32_t i = 0; i < depth; i++)
 	{
 		//compute intersection
 		IntersectionInfo hitInfo;
@@ -306,7 +245,7 @@ vec3 RendererBidirectional::connect_subpaths(const std::shared_ptr<const Scene>&
 			return vec3(0.0f);
 
 		uint32_t numLights = (uint32_t)scene->get_lights().size();
-		uint32_t lightIdx = prng->randi() % numLights;
+		uint32_t lightIdx = std::min((uint32_t)(prng->randf() * numLights), numLights - 1);
 	
 		vec3 u = prng->rand3f();
 		vec3 wi;
@@ -365,6 +304,79 @@ vec3 RendererBidirectional::connect_subpaths(const std::shared_ptr<const Scene>&
 	return vec3(0.0f);
 }
 
+std::vector<RendererBidirectional::PathVertex> RendererBidirectional::trace_camera_subpath(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, uint32_t depth) const
+{
+	if(depth == 0)
+		return {};
+
+	std::vector<PathVertex> cameraSubpath;
+
+	//TODO: treat the camera properly
+	float cameraPdfPos = 1.0f;
+	float cameraPdfDir = 1.0f;
+	vec3 cameraMult = vec3(1.0f);
+	
+	PathVertex cameraStart = PathVertex::from_camera(m_cam, ray, cameraMult);
+	cameraSubpath.push_back(cameraStart);
+
+	trace_walk(prng, scene, ray, TransportMode::RADIANCE, cameraMult, cameraPdfDir, cameraSubpath, depth - 1);
+
+	return cameraSubpath;
+}
+
+std::vector<RendererBidirectional::PathVertex> RendererBidirectional::trace_light_subpath(const std::shared_ptr<PRNG>& prng, const std::shared_ptr<const Scene>& scene, const Ray& ray, uint32_t depth) const
+{
+	if(depth == 0)
+		return {};
+
+	std::vector<PathVertex> lightSubpath;
+
+	//sample light ray:
+	//---------------
+	uint32_t numLights = (uint32_t)scene->get_lights().size();
+	if(numLights == 0)
+		return {};
+
+	uint32_t lightIdx = std::min((uint32_t)(prng->randf() * numLights), numLights - 1);
+	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
+	float lightPdf = 1.0f / numLights;
+
+	vec3 u1 = prng->rand3f();
+	vec3 u2 = prng->rand3f();
+
+	Ray lightRay;
+	vec3 lightNormal;
+	float lightPdfPos;
+	float lightPdfDir;
+	vec3 le = light->sample_le(u1, u2, lightRay, lightNormal, lightPdfPos, lightPdfDir);
+	if(lightPdfPos == 0.0f || lightPdfDir == 0.0f)
+		return {};
+
+	//get multiplier, start walk:
+	//---------------
+	IntersectionInfo lightHit;
+	lightHit.pos = lightRay.origin();
+	lightHit.shadingNormal = lightNormal;
+
+	vec3 lightMult = le * std::abs(dot(lightNormal, lightRay.direction())) / (lightPdf * lightPdfDir * lightPdfPos);
+
+	PathVertex lightStart = PathVertex::from_light(light, lightHit, lightMult, lightPdfPos * lightPdf);
+	lightSubpath.push_back(lightStart);
+
+	trace_walk(prng, scene, lightRay, TransportMode::IMPORTANCE, lightMult, lightPdfDir, lightSubpath, depth - 1);
+
+	//account for infinite lights:
+	//---------------
+	if(light->is_infinite())
+	{
+		if(lightSubpath.size() > 1)
+			lightSubpath[1].pdfFwd = lightPdfPos * std::abs(dot(ray.direction(), lightSubpath[1].intersection.shadingNormal));
+
+		lightSubpath[0].pdfFwd = PathVertex::pdf_light_infinite(scene, lightRay.direction());
+	}
+
+	return lightSubpath;
+}
 
 float RendererBidirectional::mis_weight(const std::shared_ptr<const Scene>& scene, std::vector<PathVertex>& cameraSubpath, std::vector<PathVertex>& lightSubpath,
                                         PathVertex& sampled, uint32_t numLight, uint32_t numCam) const

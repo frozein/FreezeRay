@@ -1,6 +1,9 @@
 #include "freezeray/fr_renderer.hpp"
+
 #include "freezeray/fr_ray.hpp"
 #include "freezeray/fr_globals.hpp"
+#include "fr_thread_pool.hpp"
+
 #include <math.h>
 #include <thread>
 #include <mutex>
@@ -16,70 +19,14 @@ namespace fr
 
 //-------------------------------------------//
 
-struct WorkGroup
+struct ImageTile
 {
+	uint32_t id;
+
 	uint32_t startX;
 	uint32_t startY;
 	uint32_t endX;
 	uint32_t endY;
-};
-
-class ThreadPool
-{
-public:
-	ThreadPool(uint64_t numWorkers, const std::queue<WorkGroup>& workGroups, std::function<void(const WorkGroup&, const std::shared_ptr<PRNG>& prng)> process) :
-		m_workGroups(workGroups), m_process(process)
-	{
-		m_activeThreads = numWorkers;
-
-		for(uint64_t i = 0; i < numWorkers; i++)
-		{
-			m_workers.emplace_back(
-				[this] {
-					std::shared_ptr<PRNG> prng = std::make_shared<PRNG>();
-
-					while(true)
-					{
-						WorkGroup group;
-
-						{
-							std::unique_lock<std::mutex> lock(m_queueMutex);
-							
-							if(m_workGroups.empty())
-							{
-								m_activeThreads.fetch_sub(1);
-								return;
-							}
-
-							group = m_workGroups.front();
-							m_workGroups.pop();
-						}
-
-						m_process(group, prng);
-					}
-				}
-			);
-		}
-	}
-
-	bool complete()
-	{
-		return m_activeThreads.load() == 0;
-	}
-
-	~ThreadPool()
-	{
-		for(uint64_t i = 0; i < m_workers.size(); i++)
-			m_workers[i].join();
-	}
-
-private:
-	std::vector<std::thread> m_workers;
-	std::atomic<uint64_t> m_activeThreads = 0;
-
-	std::queue<WorkGroup> m_workGroups;
-	std::mutex m_queueMutex;
-	std::function<void(const WorkGroup&, const std::shared_ptr<PRNG>&)> m_process;
 };
 
 //-------------------------------------------//
@@ -99,11 +46,11 @@ Renderer::~Renderer()
 
 }
 
-void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<void(uint32_t, uint32_t, vec3)> writePixel, std::function<void()> display, uint32_t displayFrequency)
+void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<void(uint32_t, uint32_t, vec3)> writePixel, std::function<void(float)> display, uint32_t displayFrequency)
 {
 	//generate workgroups:
 	//---------------
-	std::queue<WorkGroup> workGroups;
+	std::queue<ImageTile> workGroups;
 
 	uint32_t xDivs = (m_imageW + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
 	uint32_t yDivs = (m_imageH + WORKGROUP_SIZE - 1) / WORKGROUP_SIZE;
@@ -125,7 +72,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 		uint32_t xMax = xMin + xBaseSize + (x < xRemain ? 1 : 0) - 1;
 		uint32_t yMax = yMin + yBaseSize + (y < yRemain ? 1 : 0) - 1;
 
-		workGroups.push( {xMin, yMin, xMax, yMax} );
+		workGroups.push( {idx, xMin, yMin, xMax, yMax} );
 	}
 
 	//define processing func:
@@ -137,18 +84,21 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 
 	std::atomic<uint64_t> threadsRendering = 0;
 
-	auto processWorkgroup = [&](const WorkGroup& group, const std::shared_ptr<PRNG>& prng) {
+	auto processWorkgroup = [&](const ImageTile& tile) {
 		//wait for main thread to display
 		{
 			std::unique_lock<std::mutex> lock(displayMutex);
 			displayCV.wait(lock, [&]{ return !shouldDisplay; });
 		}
 
+		//create prng
+		std::shared_ptr<PRNG> prng = std::make_shared<PRNG>(tile.id);
+
 		//increment threads rendering
 		threadsRendering.fetch_add(1);
 		
-		for(int32_t y = group.endY; y >= (int32_t)group.startY; y--)
-		for(uint32_t x = group.startX; x <= group.endX; x++)
+		for(int32_t y = tile.endY; y >= (int32_t)tile.startY; y--)
+		for(uint32_t x = tile.startX; x <= tile.endX; x++)
 		{
 			//generate ray for current pixel
 			Ray cameraRay = get_camera_ray(x, (uint32_t)y);
@@ -177,7 +127,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 	//start thread groups, display periodically:
 	//---------------
 	uint64_t numThreads = std::thread::hardware_concurrency();
-	ThreadPool pool(numThreads, workGroups, processWorkgroup);
+	ThreadPool<ImageTile> pool(numThreads, workGroups, processWorkgroup);
 
 	while(!pool.complete())
 	{
@@ -188,7 +138,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 		std::unique_lock<std::mutex> lock(displayMutex);
 		displayCVmain.wait(lock, [&]{ return threadsRendering.load() == 0; });
 
-		display();
+		display(pool.progress());
 
 		shouldDisplay = false;
 		displayCV.notify_all();
@@ -196,7 +146,7 @@ void Renderer::render(const std::shared_ptr<const Scene>& scene, std::function<v
 
 	//display final result:
 	//---------------
-	display();
+	display(pool.progress());
 }
 
 //-------------------------------------------//
@@ -209,7 +159,7 @@ vec3 Renderer::sample_one_light(const std::shared_ptr<PRNG>& prng, const std::sh
 	if(numLights == 0)
 		return vec3(0.0f);
 
-	uint32_t lightIdx = prng->randi() % numLights;
+	uint32_t lightIdx = std::min((uint32_t)(prng->randf() * numLights), numLights - 1);
 
 	//sample li:
 	//---------------
@@ -246,7 +196,7 @@ vec3 Renderer::sample_one_light_mis(const std::shared_ptr<PRNG>& prng, const std
 	if(numLights == 0)
 		return vec3(0.0f);
 
-	uint32_t lightIdx = prng->randi() % numLights;
+	uint32_t lightIdx = std::min((uint32_t)(prng->randf() * numLights), numLights - 1);
 	const std::shared_ptr<const Light>& light = scene->get_lights()[lightIdx];
 
 	float pdfLightSample = 1.0f / (float)numLights;
@@ -357,7 +307,13 @@ Ray Renderer::get_camera_ray(uint32_t x, uint32_t y) const
 {
 	vec2 pixelCenter = vec2((float)x, (float)y) + vec2(0.5f);
 	vec2 pixelUV = pixelCenter / vec2((float)m_imageW, (float)m_imageH);
-	vec2 pixelD = pixelUV * 2.0f - vec2(1.0f);
+	
+	return get_camera_ray(pixelUV);
+}
+
+Ray Renderer::get_camera_ray(vec2 uv) const
+{
+	vec2 pixelD = uv * 2.0f - vec2(1.0f);
 
 	vec4 rayOrig = m_camInvView * vec4(0.0f, 0.0f, 0.0f, 1.0f);
 	vec4 rayTarget = m_camInvProj * vec4(pixelD.x, pixelD.y, 1.0f, 1.0f);
