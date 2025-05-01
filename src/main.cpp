@@ -25,8 +25,8 @@ int main(int argc, char** argv)
 	//load scene:
 	//---------------
 	//ExampleScene scene = example_material_demo("assets/skyboxes/noon_sunny.hdr");
-	//ExampleScene scene = example_cornell_box();
-	ExampleScene scene = example_sponza();
+	ExampleScene scene = example_cornell_box();
+	//ExampleScene scene = example_sponza();
 	//ExampleScene scene = example_san_miguel();
 
 	//init SDL and create window:
@@ -70,7 +70,7 @@ int main(int argc, char** argv)
 		scene.windowWidth, 
 		scene.windowHeight, 
 		10,
-		200,
+		50,
 		true,
 		true
 	);
