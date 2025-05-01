@@ -65,23 +65,23 @@ int main(int argc, char** argv)
 
 	//create renderer:
 	//---------------
-	/*std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
+	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererBidirectional>(
 		scene.camera, 
 		scene.windowWidth, 
 		scene.windowHeight, 
 		10,
-		10,
+		200,
 		true,
 		true
-	);*/
+	);
 
-	std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererMetropolis>(
+	/*std::unique_ptr<fr::Renderer> renderer = std::make_unique<fr::RendererMetropolis>(
 		scene.camera,
 		scene.windowWidth,
 		scene.windowHeight,
 		10,
 		50
-	);
+	);*/
 
 	//start rendering:
 	//---------------

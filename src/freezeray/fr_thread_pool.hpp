@@ -64,7 +64,9 @@ public:
 	float progress()
 	{
 		std::unique_lock<std::mutex> lock(m_queueMutex);
-		return 1.0f - (float)m_workGroups.size() / (float)m_numWorkGroupsInitial;			
+
+		uint64_t numWorking = m_workGroups.size() + m_activeThreads.load();
+		return 1.0f - (float)numWorking / (float)m_numWorkGroupsInitial;			
 	}
 
 	~ThreadPool()
