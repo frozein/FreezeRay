@@ -7,8 +7,11 @@ FreezeRay is intended to be as simple as possible while still providing enough f
 - Multiple material models (aggregates of BSDFS)
 - Path tracing with multiple importance sampling
 - Bidirectional path tracing with multiple importance sampling
+- Metropolis light transport
 - Loading and rendering of scenes from `.obj` files
 - A flexible code architecture, allowing easy addition of BSDFs/lights/materials/integrators
+
+See `writeup.pdf` for a full description of FreezeRay and it's development process.
 
 ## Results
 ![San Miguel Render](renders/san_miguel_reference.png)
